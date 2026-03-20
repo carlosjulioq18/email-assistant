@@ -1,0 +1,1456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Outlook Email Assistant</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0d0f14;
+    --surface: #151820;
+    --surface2: #1c2030;
+    --surface3: #232840;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #9fa3b3;
+    --text3: #6b6f80;
+    --accent: #4f7dff;
+    --accent2: #7b5cf5;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --teal: #22d3ee;
+    --r: 10px;
+    --r2: 14px;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── TOP BAR ─── */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 24px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-logo {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .topbar-title { font-weight: 600; font-size: 15px; }
+  .topbar-sub { font-size: 12px; color: var(--text3); margin-left: 2px; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .badge-connected {
+    font-size: 11px; padding: 3px 10px; border-radius: 99px;
+    background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.25);
+  }
+  .badge-disconnected {
+    font-size: 11px; padding: 3px 10px; border-radius: 99px;
+    background: rgba(248,113,113,0.12); color: var(--red); border: 1px solid rgba(248,113,113,0.25);
+  }
+
+  /* ─── LAYOUT ─── */
+  .layout { display: flex; flex: 1; overflow: hidden; height: calc(100vh - 57px); }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar-section { padding: 16px 16px 4px; font-size: 10px; letter-spacing: .08em; color: var(--text3); text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px; cursor: pointer; border-radius: 0;
+    font-size: 13.5px; color: var(--text2);
+    border-left: 2px solid transparent;
+    transition: all .15s;
+    user-select: none;
+  }
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: rgba(79,125,255,0.1); color: var(--accent); border-left-color: var(--accent); }
+  .nav-icon { width: 16px; height: 16px; opacity: .7; }
+  .nav-count {
+    margin-left: auto; font-size: 11px; padding: 1px 7px; border-radius: 99px;
+    background: var(--surface3); color: var(--text3);
+  }
+  .nav-count.has { background: rgba(79,125,255,0.2); color: var(--accent); }
+
+  .connect-box {
+    margin: 16px; border-radius: var(--r); padding: 16px;
+    background: var(--surface2); border: 1px solid var(--border2);
+  }
+  .connect-box h4 { font-size: 13px; margin-bottom: 8px; }
+  .connect-box p { font-size: 12px; color: var(--text3); line-height: 1.5; margin-bottom: 12px; }
+  .btn-sm {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; transition: all .15s; font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #3a6ae0; }
+  .btn-ghost { background: var(--surface3); color: var(--text2); border: 1px solid var(--border2); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-danger { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.25); }
+  .btn-danger:hover { background: rgba(248,113,113,0.25); }
+  .btn-green { background: rgba(52,211,153,0.12); color: var(--green); border: 1px solid rgba(52,211,153,0.3); }
+  .btn-green:hover { background: rgba(52,211,153,0.22); }
+
+  /* ─── MAIN ─── */
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+  /* ─── SETUP SCREEN ─── */
+  #screen-setup {
+    flex: 1; display: flex; align-items: center; justify-content: center; padding: 40px;
+  }
+  .setup-card {
+    max-width: 520px; width: 100%;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r2); padding: 40px;
+  }
+  .setup-card h2 { font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .setup-card p { color: var(--text3); font-size: 14px; line-height: 1.6; margin-bottom: 28px; }
+  .steps { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+  .step {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--surface2); border-radius: var(--r); padding: 14px;
+  }
+  .step-num {
+    width: 24px; height: 24px; flex-shrink: 0;
+    border-radius: 50%; background: rgba(79,125,255,0.2); color: var(--accent);
+    font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+  }
+  .step-text h4 { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .step-text p { font-size: 12px; color: var(--text3); line-height: 1.5; }
+  .step-text code { font-family: 'DM Mono', monospace; font-size: 11px; background: var(--surface3); padding: 2px 6px; border-radius: 4px; color: var(--teal); }
+  .token-input-wrap { display: flex; gap: 8px; margin-bottom: 8px; }
+  .token-input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+    color: var(--text); border-radius: var(--r); padding: 10px 14px;
+    font-size: 13px; font-family: 'DM Mono', monospace; outline: none;
+  }
+  .token-input:focus { border-color: var(--accent); }
+  .token-hint { font-size: 11px; color: var(--text3); }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ─── SUMMARY SCREEN ─── */
+  #screen-summary, #screen-emails, #screen-compose { padding: 28px; display: none; flex-direction: column; gap: 20px; }
+  #screen-summary.active, #screen-emails.active, #screen-compose.active { display: flex; }
+
+  .screen-header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .screen-header h2 { font-size: 18px; font-weight: 600; }
+  .screen-header-actions { margin-left: auto; display: flex; gap: 8px; }
+
+  .summary-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 16px 18px;
+  }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .stat-val { font-size: 26px; font-weight: 600; }
+  .stat-val.blue { color: var(--accent); }
+  .stat-val.green { color: var(--green); }
+  .stat-val.amber { color: var(--amber); }
+  .stat-val.red { color: var(--red); }
+
+  .summary-body {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px;
+  }
+  .summary-body h3 { font-size: 14px; font-weight: 500; margin-bottom: 14px; color: var(--text2); }
+  .summary-text { font-size: 14px; line-height: 1.75; color: var(--text); white-space: pre-wrap; }
+  .summary-text .loading { color: var(--text3); font-style: italic; animation: pulse 1.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  .category-group { margin-bottom: 12px; }
+  .category-header {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 500; color: var(--text3);
+    text-transform: uppercase; letter-spacing: .07em;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+    margin-bottom: 8px; cursor: pointer; user-select: none;
+  }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .cat-count { margin-left: auto; font-size: 11px; background: var(--surface3); padding: 2px 8px; border-radius: 99px; }
+
+  /* ─── EMAIL LIST ─── */
+  .email-list { display: flex; flex-direction: column; gap: 6px; }
+  .email-row {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 14px 16px;
+    cursor: pointer; transition: all .15s;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+  }
+  .email-row:hover { border-color: var(--border2); background: var(--surface2); }
+  .email-row.selected { border-color: var(--accent); background: rgba(79,125,255,0.05); }
+  .email-row.replied { opacity: .55; }
+  .email-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--surface3); display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 600; color: var(--text2); flex-shrink: 0;
+  }
+  .email-meta { min-width: 0; }
+  .email-from { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .email-subject { font-size: 12.5px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .email-preview { font-size: 12px; color: var(--text3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .email-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+  .email-time { font-size: 11px; color: var(--text3); }
+  .email-tags { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+  .tag {
+    font-size: 10px; padding: 2px 7px; border-radius: 99px; font-weight: 500;
+  }
+  .tag-report { background: rgba(79,125,255,0.15); color: var(--accent); }
+  .tag-action { background: rgba(251,191,36,0.15); color: var(--amber); }
+  .tag-info { background: rgba(34,211,238,0.15); color: var(--teal); }
+  .tag-urgent { background: rgba(248,113,113,0.15); color: var(--red); }
+  .tag-replied { background: rgba(52,211,153,0.15); color: var(--green); }
+  .tag-attach { background: rgba(255,255,255,0.06); color: var(--text3); }
+
+  /* ─── ATTACHMENTS ─── */
+  .attachments-section { display: flex; flex-direction: column; gap: 8px; }
+  .attachments-label { font-size: 12px; color: var(--text3); font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .attach-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .attach-item {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .attach-icon { font-size: 18px; flex-shrink: 0; }
+  .attach-meta { min-width: 0; }
+  .attach-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+  .attach-size { font-size: 11px; color: var(--text3); }
+  .attach-actions { display: flex; gap: 6px; margin-left: 4px; }
+  .attach-btn { font-size: 11px; padding: 3px 8px; border-radius: 6px; cursor: pointer; border: none; font-family: inherit; transition: all .15s; }
+  .attach-btn-dl { background: rgba(79,125,255,0.15); color: var(--accent); }
+  .attach-btn-dl:hover { background: rgba(79,125,255,0.28); }
+  .attach-btn-read { background: rgba(52,211,153,0.12); color: var(--green); }
+  .attach-btn-read:hover { background: rgba(52,211,153,0.24); }
+  .attach-btn-read:disabled { opacity: .45; cursor: not-allowed; }
+  .attach-content-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 12px; line-height: 1.7; color: var(--text2); white-space: pre-wrap; max-height: 160px; overflow-y: auto; display: none; }
+  .attach-content-box.open { display: block; }
+  .attach-content-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+
+  /* ─── EMAIL DETAIL ─── */
+  .email-detail {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r);
+    padding: 22px; display: none; flex-direction: column; gap: 16px;
+  }
+  .email-detail.open { display: flex; }
+  .detail-header { display: flex; gap: 12px; align-items: flex-start; }
+  .detail-avatar {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--surface3); display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 600; flex-shrink: 0;
+  }
+  .detail-meta { flex: 1; min-width: 0; }
+  .detail-from { font-size: 15px; font-weight: 600; }
+  .detail-subject { font-size: 13px; color: var(--text2); margin-top: 3px; }
+  .detail-time { font-size: 12px; color: var(--text3); margin-top: 2px; }
+  .detail-body {
+    font-size: 13.5px; line-height: 1.8; color: var(--text2);
+    background: var(--surface2); border-radius: 8px; padding: 16px;
+    white-space: pre-wrap; max-height: 260px; overflow-y: auto;
+  }
+  .reply-section { display: flex; flex-direction: column; gap: 10px; }
+  .reply-label { font-size: 12px; color: var(--text3); font-weight: 500; }
+  .reply-textarea {
+    width: 100%; min-height: 80px; background: var(--surface2);
+    border: 1px solid var(--border2); color: var(--text);
+    border-radius: var(--r); padding: 12px; font-size: 13px;
+    font-family: inherit; resize: vertical; outline: none; line-height: 1.6;
+  }
+  .reply-textarea:focus { border-color: var(--accent); }
+  .reply-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .ai-reply-box {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: var(--r); padding: 14px;
+    font-size: 13px; line-height: 1.75; color: var(--text);
+    white-space: pre-wrap; display: none;
+  }
+  .ai-reply-box.open { display: block; }
+  .ai-reply-label { font-size: 11px; color: var(--text3); margin-bottom: 8px; font-weight: 500; }
+
+  /* ─── COMPOSE ─── */
+  .compose-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 22px;
+  }
+  .compose-field { display: flex; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .compose-field-label { font-size: 12px; color: var(--text3); width: 50px; flex-shrink: 0; }
+  .compose-field input {
+    flex: 1; background: transparent; border: none; color: var(--text); font-size: 13px; outline: none; font-family: inherit;
+  }
+  .compose-body-wrap { padding-top: 14px; }
+  .compose-body {
+    width: 100%; min-height: 180px; background: transparent; border: none;
+    color: var(--text); font-size: 13.5px; font-family: inherit; outline: none; resize: none; line-height: 1.8;
+  }
+  .compose-toolbar { display: flex; gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+
+  /* ─── PROGRESS / LOADING ─── */
+  .progress-bar-wrap { background: var(--surface2); border-radius: 99px; height: 4px; overflow: hidden; }
+  .progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width .4s; }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 99px; }
+
+  /* ─── TOAST ─── */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 999;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: var(--r); padding: 12px 18px; font-size: 13px;
+    display: none; align-items: center; gap: 8px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    animation: slideup .25s ease;
+  }
+  @keyframes slideup { from { transform: translateY(12px); opacity:0; } }
+  #toast.show { display: flex; }
+
+  /* ─── DATE SEPARATOR ─── */
+  .date-sep {
+    font-size: 11px; color: var(--text3); text-align: center;
+    padding: 6px 0; position: relative;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .date-sep::before, .date-sep::after { content:''; flex:1; height:1px; background: var(--border); }
+
+  .filter-bar {
+    display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  }
+  .filter-chip {
+    font-size: 12px; padding: 5px 12px; border-radius: 99px;
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text3);
+    cursor: pointer; transition: all .15s; user-select: none;
+  }
+  .filter-chip:hover { border-color: var(--border2); color: var(--text); }
+  .filter-chip.active { background: rgba(79,125,255,0.15); border-color: var(--accent); color: var(--accent); }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text3); font-size: 14px;
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state h3 { font-size: 16px; color: var(--text2); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-logo">✉</div>
+  <div>
+    <div class="topbar-title">Email Assistant</div>
+    <div class="topbar-sub">Microsoft 365 / Outlook</div>
+  </div>
+  <div class="topbar-actions">
+    <span id="conn-badge" class="badge-disconnected">● Not connected</span>
+    <button class="btn-sm btn-ghost" onclick="showScreen('setup')">⚙ Settings</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Navigation</div>
+    <div class="nav-item active" id="nav-summary" onclick="showScreen('summary')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" fill="currentColor"/><rect x="9" y="2" width="5" height="5" rx="1" fill="currentColor"/><rect x="2" y="9" width="5" height="5" rx="1" fill="currentColor"/><rect x="9" y="9" width="5" height="5" rx="1" fill="currentColor"/></svg>
+      Daily Summary
+    </div>
+    <div class="nav-item" id="nav-emails" onclick="showScreen('emails')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 5l7 5 7-5" stroke="currentColor" stroke-width="1.3"/></svg>
+      All Unread
+      <span class="nav-count has" id="inbox-count">0</span>
+    </div>
+    <div class="nav-item" id="nav-compose" onclick="showScreen('compose')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M2 13l2-2 8-8 2 2-8 8-2 2z" stroke="currentColor" stroke-width="1.3"/><path d="M10 3l3 3" stroke="currentColor" stroke-width="1.3"/></svg>
+      New Email
+    </div>
+
+    <div class="sidebar-section" style="margin-top:8px;">Categories</div>
+    <div class="nav-item" id="nav-cat-report" onclick="filterCategory('Daily Reports')">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0"></span>
+      Daily Reports
+      <span class="nav-count" id="count-report">0</span>
+    </div>
+    <div class="nav-item" id="nav-cat-action" onclick="filterCategory('Action Required')">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--amber);flex-shrink:0"></span>
+      Action Required
+      <span class="nav-count" id="count-action">0</span>
+    </div>
+    <div class="nav-item" id="nav-cat-info" onclick="filterCategory('Informational')">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>
+      Informational
+      <span class="nav-count" id="count-info">0</span>
+    </div>
+    <div class="nav-item" id="nav-cat-urgent" onclick="filterCategory('Urgent')">
+      <span style="width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0"></span>
+      Urgent
+      <span class="nav-count" id="count-urgent">0</span>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div class="connect-box" id="sidebar-connect-box">
+      <h4>Connect Outlook</h4>
+      <p>Paste your Microsoft Graph API access token to fetch your real emails.</p>
+      <button class="btn-sm btn-primary" onclick="showScreen('setup')" style="width:100%;justify-content:center">Connect Account</button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main class="main">
+
+    <!-- SETUP SCREEN -->
+    <div id="screen-setup">
+      <div class="setup-card">
+        <h2>Connect Your Outlook</h2>
+        <p>This assistant uses the Microsoft Graph API to read your emails, generate AI summaries, and send professional replies.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-text">
+              <h4>Sign in at Microsoft Graph Explorer</h4>
+              <p>Go to <code>aka.ms/ge</code>, sign in with your Microsoft 365 account, and click <strong>Sign in to Graph Explorer</strong>.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-text">
+              <h4>Get your access token</h4>
+              <p>Click the <code>Access Token</code> tab in Graph Explorer and copy the full token string shown there.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-text">
+              <h4>Paste it below</h4>
+              <p>Paste the token here. It expires after 1 hour — reconnect anytime to refresh.</p>
+            </div>
+          </div>
+        </div>
+        <div class="token-input-wrap">
+          <input type="password" class="token-input" id="token-input" placeholder="Paste your access token here..." />
+          <button class="btn-sm btn-primary" onclick="connectOutlook()">Connect</button>
+        </div>
+        <div class="token-hint" id="token-status"></div>
+
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn-sm btn-ghost" onclick="testConnection()" id="btn-test">🔍 Test Connection</button>
+          <span style="font-size:12px;color:var(--text3)">Run a diagnostic to see exactly what is failing</span>
+        </div>
+
+        <div id="diag-panel" style="display:none;margin-top:14px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:16px;font-size:12px;font-family:DM Mono,monospace;line-height:1.9">
+          <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-family:DM Sans,sans-serif;font-weight:500">Diagnostic Results</div>
+          <div id="diag-output"></div>
+        </div>
+
+        <div class="divider"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn-sm btn-ghost" onclick="loadDemoData()">▶ Try Demo Mode</button>
+          <span style="font-size:12px;color:var(--text3)">Load sample emails to explore the app without connecting</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY SCREEN -->
+    <div id="screen-summary" class="active">
+      <div class="screen-header">
+        <div>
+          <h2>Daily Summary</h2>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px" id="summary-date">—</div>
+        </div>
+        <div class="screen-header-actions">
+          <button class="btn-sm btn-ghost" onclick="fetchEmails()" id="btn-fetch">⟳ Fetch Unread</button>
+          <button class="btn-sm btn-primary" onclick="generateSummary()" id="btn-summarize" disabled>✦ Generate Summary</button>
+        </div>
+      </div>
+
+      <div class="summary-stats">
+        <div class="stat-card"><div class="stat-label">Total Emails</div><div class="stat-val blue" id="stat-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Daily Reports</div><div class="stat-val" id="stat-reports" style="color:var(--accent)">—</div></div>
+        <div class="stat-card"><div class="stat-label">Action Required</div><div class="stat-val amber" id="stat-action">—</div></div>
+        <div class="stat-card"><div class="stat-label">Urgent</div><div class="stat-val red" id="stat-urgent">—</div></div>
+        <div class="stat-card"><div class="stat-label">Replied</div><div class="stat-val green" id="stat-replied">0</div></div>
+      </div>
+
+      <div class="summary-body">
+        <h3>✦ AI Summary</h3>
+        <div class="summary-text" id="summary-output">
+          <span class="loading">Fetch your emails then click "Generate Summary" to get an AI-powered daily briefing...</span>
+        </div>
+      </div>
+
+      <div id="summary-cats"></div>
+    </div>
+
+    <!-- EMAILS SCREEN -->
+    <div id="screen-emails">
+      <div class="screen-header">
+        <h2>All Unread Emails</h2>
+        <div class="screen-header-actions">
+          <button class="btn-sm btn-ghost" onclick="markAllRead()">Mark all read</button>
+        </div>
+      </div>
+      <div class="filter-bar" id="filter-bar">
+        <span class="filter-chip active" onclick="setFilter('all',this)">All</span>
+        <span class="filter-chip" onclick="setFilter('Daily Reports',this)">Daily Reports</span>
+        <span class="filter-chip" onclick="setFilter('Action Required',this)">Action Required</span>
+        <span class="filter-chip" onclick="setFilter('Urgent',this)">Urgent</span>
+        <span class="filter-chip" onclick="setFilter('Informational',this)">Informational</span>
+        <span class="filter-chip" onclick="setFilter('replied',this)">Replied</span>
+        <span class="filter-chip" onclick="setFilter('attach',this)">📎 Has Attachment</span>
+      </div>
+      <div id="email-list-container">
+        <div class="empty-state">
+          <div class="icon">📭</div>
+          <h3>No emails loaded</h3>
+          <p>Go to Daily Summary and click "Fetch Emails"</p>
+        </div>
+      </div>
+      <div class="email-detail" id="email-detail"></div>
+    </div>
+
+    <!-- COMPOSE SCREEN -->
+    <div id="screen-compose">
+      <div class="screen-header">
+        <h2>New Email</h2>
+      </div>
+      <div class="compose-card">
+        <div class="compose-field">
+          <span class="compose-field-label">To</span>
+          <input type="email" id="compose-to" placeholder="recipient@company.com" />
+        </div>
+        <div class="compose-field">
+          <span class="compose-field-label">Subject</span>
+          <input type="text" id="compose-subject" placeholder="Email subject" />
+        </div>
+        <div class="compose-body-wrap">
+          <textarea class="compose-body" id="compose-body" placeholder="Write your message here...
+
+Type casually — click 'Polish with AI' to have Claude rewrite it professionally before sending."></textarea>
+        </div>
+        <div class="compose-toolbar">
+          <button class="btn-sm btn-primary" onclick="polishAndSend()">✦ Polish with AI & Send</button>
+          <button class="btn-sm btn-ghost" onclick="sendRaw()">Send as-is</button>
+          <button class="btn-sm btn-ghost" onclick="previewPolish()">Preview Polish</button>
+          <div style="margin-left:auto;font-size:12px;color:var(--text3)" id="compose-status"></div>
+        </div>
+        <div class="ai-reply-box" id="compose-preview" style="margin-top:14px">
+          <div class="ai-reply-label">✦ AI-polished version (will be sent)</div>
+          <div id="compose-preview-text"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn-sm btn-green" onclick="confirmSend()">Send This</button>
+            <button class="btn-sm btn-ghost" onclick="document.getElementById('compose-preview').classList.remove('open')">Edit</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let accessToken = localStorage.getItem('ms_token') || '';
+let emails = [];
+let currentFilter = 'all';
+let repliedIds = new Set(JSON.parse(localStorage.getItem('replied_ids') || '[]'));
+let polishedDraft = '';
+
+const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
+
+// ─── INIT ───────────────────────────────────────────────
+window.onload = () => {
+  if (accessToken) {
+    document.getElementById('conn-badge').className = 'badge-connected';
+    document.getElementById('conn-badge').textContent = '● Connected';
+    document.getElementById('sidebar-connect-box').style.display = 'none';
+    document.getElementById('token-status').textContent = '✓ Token loaded from session';
+  }
+  updateDate();
+};
+
+function updateDate() {
+  const d = new Date();
+  document.getElementById('summary-date').textContent =
+    d.toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+
+// ─── SCREENS ────────────────────────────────────────────
+function showScreen(name) {
+  ['setup','summary','emails','compose'].forEach(s => {
+    document.getElementById('screen-'+s).classList.remove('active');
+    document.getElementById('screen-'+s).style.display = '';
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const el = document.getElementById('screen-'+name);
+  el.style.display = 'flex';
+  el.classList.add('active');
+  const nav = document.getElementById('nav-'+name);
+  if (nav) nav.classList.add('active');
+}
+
+// ─── CONNECT ────────────────────────────────────────────
+function connectOutlook() {
+  const val = document.getElementById('token-input').value.trim();
+  if (!val) { setTokenStatus('Please paste a token.', 'red'); return; }
+  accessToken = val;
+  localStorage.setItem('ms_token', val);
+  document.getElementById('conn-badge').className = 'badge-connected';
+  document.getElementById('conn-badge').textContent = '● Connected';
+  document.getElementById('sidebar-connect-box').style.display = 'none';
+  setTokenStatus('✓ Token saved!', 'green');
+  toast('Connected to Outlook ✓');
+  showScreen('summary');
+}
+function setTokenStatus(msg, color) {
+  const el = document.getElementById('token-status');
+  el.textContent = msg;
+  el.style.color = color === 'red' ? 'var(--red)' : 'var(--green)';
+}
+
+
+// ─── TEST CONNECTION DIAGNOSTIC ──────────────────────────
+async function testConnection() {
+  const tokenVal = document.getElementById('token-input').value.trim() || accessToken;
+  const panel = document.getElementById('diag-panel');
+  const out = document.getElementById('diag-output');
+  const btn = document.getElementById('btn-test');
+  panel.style.display = 'block';
+  btn.textContent = '🔍 Testing...';
+  btn.disabled = true;
+
+  const log = (icon, label, val, color) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:8px;padding:3px 0;border-bottom:1px solid var(--border)';
+    row.innerHTML = `<span style="width:16px;text-align:center">${icon}</span>
+      <span style="color:var(--text3);min-width:200px">${label}</span>
+      <span style="color:${color||'var(--text)'};word-break:break-all">${val}</span>`;
+    out.appendChild(row);
+  };
+
+  out.innerHTML = '';
+
+  // 1. Token present?
+  if (!tokenVal) {
+    log('❌','Token','No token found — paste your token above','var(--red)');
+    btn.textContent = '🔍 Test Connection'; btn.disabled = false; return;
+  }
+  log('✅','Token present', tokenVal.length + ' characters', 'var(--green)');
+
+  // 2. Decode JWT header + payload (no verification)
+  try {
+    const parts = tokenVal.split('.');
+    if (parts.length !== 3) throw new Error('Not a JWT');
+    const payload = JSON.parse(atob(parts[1].replace(/-/g,'+').replace(/_/g,'/')));
+    const expDate = new Date(payload.exp * 1000);
+    const now = new Date();
+    const expired = expDate < now;
+    log(expired ? '❌' : '✅', 'Token expiry', expDate.toLocaleTimeString() + (expired ? ' — EXPIRED' : ' — still valid'), expired ? 'var(--red)' : 'var(--green)');
+    log('ℹ️','Issued to', payload.unique_name || payload.upn || 'unknown', 'var(--teal)');
+    log('ℹ️','Audience (aud)', payload.aud, 'var(--text2)');
+    const scopes = (payload.scp || '').split(' ');
+    const hasMailRead = scopes.includes('Mail.Read') || scopes.includes('Mail.ReadWrite');
+    const hasMailSend = scopes.includes('Mail.Send') || scopes.includes('Mail.ReadWrite');
+    log(hasMailRead ? '✅' : '❌', 'Mail.Read scope', hasMailRead ? 'Present' : 'MISSING — this is why emails fail', hasMailRead ? 'var(--green)' : 'var(--red)');
+    log(hasMailSend ? '✅' : '⚠️', 'Mail.Send scope', hasMailSend ? 'Present' : 'Missing — needed to send replies', hasMailSend ? 'var(--green)' : 'var(--amber)');
+    log('ℹ️','All scopes', payload.scp || 'none', 'var(--text3)');
+    if (expired) {
+      log('👉','Action needed','Go to Graph Explorer → Access Token tab → copy fresh token','var(--amber)');
+      btn.textContent = '🔍 Test Connection'; btn.disabled = false; return;
+    }
+  } catch(e) {
+    log('⚠️','JWT decode','Could not decode token: ' + e.message,'var(--amber)');
+  }
+
+  // 3. Live API test — /me
+  try {
+    log('⏳','Testing /me endpoint','Calling Graph API...','var(--text3)');
+    const r1 = await fetch('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: 'Bearer ' + tokenVal }
+    });
+    const d1 = await r1.json();
+    if (r1.ok) {
+      log('✅','/me endpoint', 'OK — signed in as ' + (d1.displayName||d1.userPrincipalName), 'var(--green)');
+    } else {
+      log('❌','/me endpoint', d1.error?.code + ': ' + d1.error?.message, 'var(--red)');
+    }
+  } catch(e) {
+    log('❌','/me endpoint','Network error: ' + e.message,'var(--red)');
+  }
+
+  // 4. Live API test — /me/messages
+  try {
+    log('⏳','Testing Mail.Read','Calling /me/messages...','var(--text3)');
+    const r2 = await fetch('https://graph.microsoft.com/v1.0/me/messages?$top=1&$select=id,subject', {
+      headers: { Authorization: 'Bearer ' + tokenVal }
+    });
+    const d2 = await r2.json();
+    if (r2.ok) {
+      const subj = d2.value?.[0]?.subject || '(no emails found)';
+      log('✅','Mail.Read', 'OK — first email: "' + subj + '"', 'var(--green)');
+      log('👉','Ready!','Token works. Click Connect above then go to Daily Summary → Fetch Unread.','var(--green)');
+    } else {
+      log('❌','Mail.Read', d2.error?.code + ': ' + d2.error?.message, 'var(--red)');
+      if (d2.error?.code === 'ErrorAccessDenied') {
+        log('👉','Fix','Mail.Read scope is missing from this token. In Graph Explorer: Modify permissions → add Mail.Read → consent → copy new token.','var(--amber)');
+      }
+    }
+  } catch(e) {
+    log('❌','Mail.Read','Network error: ' + e.message,'var(--red)');
+  }
+
+  btn.textContent = '🔍 Test Connection'; btn.disabled = false;
+}
+
+// ─── FETCH EMAILS (all unread, paginated) ────────────────
+async function fetchEmails() {
+  const btn = document.getElementById('btn-fetch');
+  if (!accessToken) { toast('Connect your account first.'); showScreen('setup'); return; }
+  btn.textContent = '⟳ Fetching...';
+  btn.disabled = true;
+
+  // Show progress bar in summary output
+  document.getElementById('summary-output').innerHTML =
+    `<span class="loading">Fetching all unread emails...</span>
+     <div class="progress-bar-wrap" style="margin-top:12px"><div class="progress-bar" id="fetch-progress" style="width:5%"></div></div>
+     <div id="fetch-status" style="font-size:12px;color:var(--text3);margin-top:6px">Connecting to Outlook...</div>`;
+
+  const setProgress = (pct, msg) => {
+    const bar = document.getElementById('fetch-progress');
+    const status = document.getElementById('fetch-status');
+    if (bar) bar.style.width = pct + '%';
+    if (status) status.textContent = msg;
+  };
+
+  try {
+    let allEmails = [];
+    // Filter to unread only, page through all results (100 per page)
+    let url = 'https://graph.microsoft.com/v1.0/me/messages' +
+      '?$filter=isRead eq false' +
+      '&$top=100' +
+      '&$orderby=receivedDateTime desc' +
+      '&$select=id,subject,from,bodyPreview,body,receivedDateTime,isRead,hasAttachments';
+
+    let page = 1;
+    while (url) {
+      setProgress(Math.min(5 + page * 15, 80), `Fetching page ${page} (${allEmails.length} so far)...`);
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+
+      const mapped = (data.value || []).map(m => ({
+        id: m.id,
+        from: m.from?.emailAddress?.name || m.from?.emailAddress?.address || 'Unknown',
+        fromEmail: m.from?.emailAddress?.address || '',
+        subject: m.subject || '(No subject)',
+        preview: m.bodyPreview || '',
+        body: m.body?.content?.replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim() || m.bodyPreview || '',
+        time: m.receivedDateTime,
+        category: null,
+        isRead: false,
+      }));
+      allEmails = allEmails.concat(mapped);
+
+      // Follow @odata.nextLink for pagination, stop at 500 emails max
+      url = (data['@odata.nextLink'] && allEmails.length < 500) ? data['@odata.nextLink'] : null;
+      page++;
+    }
+
+    emails = allEmails;
+    setProgress(85, `Categorizing ${emails.length} emails with AI...`);
+    await categorizeEmails();
+    setProgress(100, 'Done!');
+    updateStats();
+    renderEmailList();
+    document.getElementById('btn-summarize').disabled = false;
+    document.getElementById('summary-output').innerHTML =
+      `<span style="color:var(--green)">✓ ${emails.length} unread emails fetched and categorized. Click "Generate Summary" for your AI briefing.</span>`;
+    toast(`Fetched ${emails.length} unread emails ✓`);
+  } catch(e) {
+    document.getElementById('summary-output').innerHTML =
+      `<span class="loading">Fetch your emails then click "Generate Summary"...</span>`;
+    toast('Error: ' + (e.message || 'Check your token'), 'error');
+  }
+  btn.textContent = '⟳ Fetch Emails';
+  btn.disabled = false;
+}
+
+// ─── CATEGORIZE ──────────────────────────────────────────
+async function categorizeEmails() {
+  const subjects = emails.map((e,i) => `${i}: ${e.subject} | From: ${e.from}`).join('\n');
+  const prompt = `Categorize each email into ONE category: "Daily Reports", "Action Required", "Urgent", or "Informational".
+Emails:
+${subjects}
+Reply ONLY with valid JSON array of strings like: ["Daily Reports","Action Required",...] with exactly ${emails.length} entries. No explanation.`;
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const text = data.content[0].text.trim();
+    const clean = text.replace(/```json|```/g,'').trim();
+    const cats = JSON.parse(clean);
+    cats.forEach((cat, i) => { if (emails[i]) emails[i].category = cat; });
+  } catch {
+    emails.forEach(e => { e.category = e.category || 'Informational'; });
+  }
+}
+
+// ─── STATS ───────────────────────────────────────────────
+function updateStats() {
+  document.getElementById('stat-total').textContent = emails.length;
+  document.getElementById('stat-reports').textContent = emails.filter(e=>e.category==='Daily Reports').length;
+  document.getElementById('stat-action').textContent = emails.filter(e=>e.category==='Action Required').length;
+  document.getElementById('stat-urgent').textContent = emails.filter(e=>e.category==='Urgent').length;
+  document.getElementById('stat-replied').textContent = repliedIds.size;
+  document.getElementById('inbox-count').textContent = emails.length;
+  document.getElementById('count-report').textContent = emails.filter(e=>e.category==='Daily Reports').length;
+  document.getElementById('count-action').textContent = emails.filter(e=>e.category==='Action Required').length;
+  document.getElementById('count-info').textContent = emails.filter(e=>e.category==='Informational').length;
+  document.getElementById('count-urgent').textContent = emails.filter(e=>e.category==='Urgent').length;
+  ['count-report','count-action','count-info','count-urgent'].forEach(id=>{
+    document.getElementById(id).className = parseInt(document.getElementById(id).textContent)>0 ? 'nav-count has' : 'nav-count';
+  });
+}
+
+// ─── GENERATE SUMMARY ────────────────────────────────────
+async function generateSummary() {
+  if (!emails.length) { toast('Fetch emails first.'); return; }
+  const btn = document.getElementById('btn-summarize');
+  btn.textContent = '✦ Generating...';
+  btn.disabled = true;
+  document.getElementById('summary-output').innerHTML = '<span class="loading">✦ Claude is reading your emails...</span>';
+
+  const byCategory = {};
+  emails.forEach(e => {
+    const cat = e.category || 'Informational';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(e);
+  });
+
+  const emailList = emails.slice(0, 40).map(e =>
+    `[${e.category}] FROM: ${e.from} | SUBJECT: ${e.subject} | PREVIEW: ${e.preview.slice(0,120)}`
+  ).join('\n');
+
+  const prompt = `You are a professional executive assistant. Write a concise daily email briefing for your executive.
+
+Today's emails (${emails.length} total):
+${emailList}
+
+Write a structured daily briefing with these sections:
+1. **Executive Overview** (2-3 sentences summarizing the day)
+2. **Urgent Items** (anything needing immediate attention)
+3. **Daily Reports Received** (list key reports with one-line summary each)
+4. **Action Items** (things requiring a response or decision)
+5. **FYI / Informational** (brief summary of general updates)
+
+Be concise but informative. Use a professional executive assistant tone.`;
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+    });
+    const data = await res.json();
+    let text = data.content[0].text;
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br>');
+    document.getElementById('summary-output').innerHTML = text;
+    renderCategoryGroups(byCategory);
+  } catch(e) {
+    document.getElementById('summary-output').innerHTML = '<span style="color:var(--red)">Error generating summary. Check Claude API.</span>';
+  }
+  btn.textContent = '✦ Generate Summary';
+  btn.disabled = false;
+}
+
+function renderCategoryGroups(byCategory) {
+  const colors = { 'Daily Reports':'var(--accent)', 'Action Required':'var(--amber)', 'Urgent':'var(--red)', 'Informational':'var(--teal)' };
+  const container = document.getElementById('summary-cats');
+  container.innerHTML = '';
+  Object.entries(byCategory).forEach(([cat, items]) => {
+    const div = document.createElement('div');
+    div.className = 'summary-body';
+    div.innerHTML = `<div class="category-header">
+      <span class="cat-dot" style="background:${colors[cat]||'var(--text3)'}"></span>
+      <span>${cat}</span>
+      <span class="cat-count">${items.length}</span>
+    </div>
+    ${items.slice(0,5).map(e=>`
+      <div class="email-row" style="margin-bottom:6px" onclick="openEmailDetail('${e.id}')">
+        <div class="email-avatar">${e.from[0]?.toUpperCase()||'?'}</div>
+        <div class="email-meta">
+          <div class="email-from">${esc(e.from)}</div>
+          <div class="email-subject">${esc(e.subject)}</div>
+        </div>
+        <div class="email-right">
+          <div class="email-time">${formatTime(e.time)}</div>
+          ${e.hasAttachments ? '<span class="tag tag-attach">📎</span>' : ''}
+          ${repliedIds.has(e.id) ? '<span class="tag tag-replied">Replied</span>' : ''}
+        </div>
+      </div>`).join('')}
+    ${items.length>5?`<div style="font-size:12px;color:var(--text3);padding-top:6px">+${items.length-5} more — <span style="cursor:pointer;color:var(--accent)" onclick="filterCategory('${cat}')">View all →</span></div>`:''}`;
+    container.appendChild(div);
+  });
+}
+
+// ─── EMAIL LIST ───────────────────────────────────────────
+function renderEmailList() {
+  const container = document.getElementById('email-list-container');
+  let filtered = currentFilter === 'all' ? emails
+    : currentFilter === 'replied' ? emails.filter(e=>repliedIds.has(e.id))
+    : currentFilter === 'attach' ? emails.filter(e=>e.hasAttachments)
+    : emails.filter(e=>e.category===currentFilter);
+
+  if (!filtered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><h3>No emails</h3><p>No emails match this filter.</p></div>';
+    return;
+  }
+
+  const tagClass = { 'Daily Reports':'tag-report','Action Required':'tag-action','Urgent':'tag-urgent','Informational':'tag-info' };
+  let html = '<div class="email-list">';
+  filtered.forEach((e, i) => {
+    const prev = filtered[i-1];
+    if (!prev || !sameDay(e.time, prev.time)) {
+      html += `<div class="date-sep">${formatDate(e.time)}</div>`;
+    }
+    html += `<div class="email-row${repliedIds.has(e.id)?' replied':''}" id="row-${e.id}" onclick="openEmailDetail('${e.id}')">
+      <div class="email-avatar">${e.from[0]?.toUpperCase()||'?'}</div>
+      <div class="email-meta">
+        <div class="email-from">${esc(e.from)}</div>
+        <div class="email-subject">${esc(e.subject)}</div>
+        <div class="email-preview">${esc(e.preview?.slice(0,80)||'')}</div>
+      </div>
+      <div class="email-right">
+        <div class="email-time">${formatTime(e.time)}</div>
+        <div class="email-tags">
+          ${e.category ? `<span class="tag ${tagClass[e.category]||'tag-info'}">${e.category}</span>` : ''}
+          ${e.hasAttachments ? '<span class="tag tag-attach">📎</span>' : ''}
+          ${e.hasAttachments ? '<span class="tag tag-attach">📎</span>' : ''}
+          ${repliedIds.has(e.id) ? '<span class="tag tag-replied">Replied</span>' : ''}
+        </div>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function setFilter(f, el) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  renderEmailList();
+  document.getElementById('email-detail').classList.remove('open');
+}
+
+function filterCategory(cat) {
+  currentFilter = cat;
+  showScreen('emails');
+  document.querySelectorAll('.filter-chip').forEach(c=>{
+    c.classList.toggle('active', c.textContent===cat);
+  });
+  renderEmailList();
+}
+
+// ─── EMAIL DETAIL ─────────────────────────────────────────
+function openEmailDetail(id) {
+  const email = emails.find(e=>e.id===id);
+  if (!email) return;
+  document.querySelectorAll('.email-row').forEach(r=>r.classList.remove('selected'));
+  const row = document.getElementById('row-'+id);
+  if (row) row.classList.add('selected');
+
+  const detail = document.getElementById('email-detail');
+  detail.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar">${email.from[0]?.toUpperCase()||'?'}</div>
+      <div class="detail-meta">
+        <div class="detail-from">${esc(email.from)} &lt;${esc(email.fromEmail)}&gt;</div>
+        <div class="detail-subject">${esc(email.subject)}</div>
+        <div class="detail-time">${formatDateFull(email.time)}</div>
+      </div>
+      <button class="btn-sm btn-ghost" onclick="document.getElementById('email-detail').classList.remove('open')">✕ Close</button>
+    </div>
+    <div class="detail-body">${esc(email.body||email.preview)}</div>
+    ${email.hasAttachments ? `
+    <div class="attachments-section" id="attach-section-${id}">
+      <div class="attachments-label">📎 Attachments <span id="attach-loading-${id}" style="color:var(--text3);font-style:italic;font-size:11px">Loading...</span></div>
+      <div class="attach-list" id="attach-list-${id}"></div>
+    </div>` : ''}
+    <div class="reply-section">
+      <div class="reply-label">Your reply (write casually — AI will polish it professionally)</div>
+      <textarea class="reply-textarea" id="reply-text-${id}" placeholder="E.g. 'Got it, will send the report by 3pm today and cc John'"></textarea>
+      <div class="reply-actions">
+        <button class="btn-sm btn-primary" onclick="aiReply('${id}')">✦ Polish & Preview Reply</button>
+        <button class="btn-sm btn-ghost" onclick="autoReply('${id}')">Auto-Reply (AI writes it)</button>
+        <button class="btn-sm btn-danger" onclick="dismissEmail('${id}')">Dismiss</button>
+      </div>
+      <div class="ai-reply-box" id="ai-box-${id}">
+        <div class="ai-reply-label">✦ Polished reply (ready to send)</div>
+        <div id="ai-reply-text-${id}"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn-sm btn-green" onclick="sendReply('${id}')">Send Reply</button>
+          <button class="btn-sm btn-ghost" onclick="document.getElementById('ai-box-${id}').classList.remove('open')">Edit</button>
+        </div>
+      </div>
+    </div>`;
+  detail.classList.add('open');
+  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  showScreen('emails');
+  if (email.hasAttachments) fetchAttachments(id);
+}
+
+async function aiReply(id) {
+  const email = emails.find(e=>e.id===id);
+  const draft = document.getElementById('reply-text-'+id)?.value?.trim();
+  if (!draft) { toast('Write your reply draft first.'); return; }
+
+  const box = document.getElementById('ai-box-'+id);
+  const textEl = document.getElementById('ai-reply-text-'+id);
+  box.classList.add('open');
+  textEl.innerHTML = '<span class="loading">✦ Polishing your reply...</span>';
+
+  const prompt = `You are a professional email assistant. Transform this casual draft into a polished, professional reply.
+
+ORIGINAL EMAIL:
+From: ${email.from}
+Subject: ${email.subject}
+Body: ${email.body?.slice(0,600)||email.preview}
+
+MY DRAFT REPLY: "${draft}"
+
+Write ONLY the professional email reply body (no subject line, no "here is your reply" preamble). Keep it concise, clear, and professional. Match the appropriate formality level.`;
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
+    });
+    const data = await res.json();
+    textEl.textContent = data.content[0].text;
+  } catch {
+    textEl.innerHTML = '<span style="color:var(--red)">Error generating reply.</span>';
+  }
+}
+
+async function autoReply(id) {
+  const email = emails.find(e=>e.id===id);
+  const box = document.getElementById('ai-box-'+id);
+  const textEl = document.getElementById('ai-reply-text-'+id);
+  box.classList.add('open');
+  textEl.innerHTML = '<span class="loading">✦ Drafting reply...</span>';
+
+  const prompt = `You are a professional executive assistant. Write a brief, professional reply to this email.
+
+From: ${email.from}
+Subject: ${email.subject}
+Body: ${email.body?.slice(0,600)||email.preview}
+
+Write ONLY the email body. Be professional, warm, and concise. Acknowledge receipt and provide an appropriate response based on the email context.`;
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
+    });
+    const data = await res.json();
+    textEl.textContent = data.content[0].text;
+  } catch {
+    textEl.innerHTML = '<span style="color:var(--red)">Error drafting reply.</span>';
+  }
+}
+
+function sendReply(id) {
+  const textEl = document.getElementById('ai-reply-text-'+id);
+  const text = textEl?.textContent;
+  if (!text || text.includes('Polishing')) { toast('Generate a reply first.'); return; }
+
+  if (accessToken && accessToken.length > 30) {
+    sendOutlookReply(id, text);
+  } else {
+    markReplied(id);
+    toast('Reply marked sent (demo mode) ✓');
+  }
+}
+
+async function sendOutlookReply(id, body) {
+  try {
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${id}/reply`, {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer '+accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment: body })
+    });
+    if (!res.ok) throw new Error('Send failed');
+    markReplied(id);
+    toast('Reply sent via Outlook ✓');
+  } catch {
+    toast('Could not send via Outlook — marked as replied locally.');
+    markReplied(id);
+  }
+}
+
+function markReplied(id) {
+  repliedIds.add(id);
+  localStorage.setItem('replied_ids', JSON.stringify([...repliedIds]));
+  updateStats();
+  renderEmailList();
+  const row = document.getElementById('row-'+id);
+  if (row) row.classList.add('replied');
+}
+
+function dismissEmail(id) {
+  markReplied(id);
+  document.getElementById('email-detail').classList.remove('open');
+}
+
+function markAllRead() { toast('All marked as read.'); }
+
+// ─── COMPOSE ─────────────────────────────────────────────
+async function previewPolish() {
+  const body = document.getElementById('compose-body').value.trim();
+  if (!body) { toast('Write something first.'); return; }
+  document.getElementById('compose-status').textContent = 'Polishing...';
+
+  const prompt = `Transform this casual email draft into a professional, polished email body.
+Subject: ${document.getElementById('compose-subject').value}
+Draft: "${body}"
+Reply ONLY with the polished email body text. No preamble.`;
+
+  try {
+    const res = await fetch(CLAUDE_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
+    });
+    const data = await res.json();
+    polishedDraft = data.content[0].text;
+    document.getElementById('compose-preview-text').textContent = polishedDraft;
+    document.getElementById('compose-preview').classList.add('open');
+    document.getElementById('compose-status').textContent = '';
+  } catch {
+    document.getElementById('compose-status').textContent = 'Error polishing.';
+  }
+}
+
+async function polishAndSend() {
+  await previewPolish();
+}
+
+function confirmSend() {
+  if (!polishedDraft) return;
+  const to = document.getElementById('compose-to').value;
+  const subject = document.getElementById('compose-subject').value;
+  if (!to || !subject) { toast('Fill in To and Subject fields.'); return; }
+
+  if (accessToken && accessToken.length > 30) {
+    sendNewEmail(to, subject, polishedDraft);
+  } else {
+    toast('Email sent (demo mode) ✓');
+    document.getElementById('compose-body').value = '';
+    document.getElementById('compose-preview').classList.remove('open');
+    document.getElementById('compose-to').value = '';
+    document.getElementById('compose-subject').value = '';
+  }
+}
+
+async function sendNewEmail(to, subject, body) {
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer '+accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        message: {
+          subject,
+          body: { contentType: 'Text', content: body },
+          toRecipients: [{ emailAddress: { address: to } }]
+        }
+      })
+    });
+    if (!res.ok) throw new Error();
+    toast('Email sent via Outlook ✓');
+    document.getElementById('compose-body').value = '';
+    document.getElementById('compose-preview').classList.remove('open');
+    document.getElementById('compose-to').value = '';
+    document.getElementById('compose-subject').value = '';
+  } catch {
+    toast('Could not send via Outlook.', 'error');
+  }
+}
+
+function sendRaw() {
+  const to = document.getElementById('compose-to').value;
+  if (!to) { toast('Add a recipient first.'); return; }
+  toast('Email sent (demo mode) ✓');
+}
+
+// ─── DEMO MODE ───────────────────────────────────────────
+function loadDemoData() {
+  emails = [
+    { id:'d1', from:'Sarah Johnson', fromEmail:'sarah@acme.com', subject:'Q3 Revenue Report - Final', hasAttachments:true, attachments:null, preview:'Please find attached the final Q3 revenue report. Total revenue came in at $4.2M, up 12% vs Q2.', body:'Hi,\n\nPlease find attached the final Q3 revenue report. Total revenue came in at $4.2M, up 12% vs Q2. EBITDA margin improved to 22%. Key highlights: North America drove 60% of revenue, new customer acquisitions up 18%, churn rate stable at 2.1%.\n\nLet me know if you need any clarifications.\n\nBest,\nSarah', time: new Date().toISOString(), category:'Daily Reports', isRead:false },
+    { id:'d2', from:'IT Operations', fromEmail:'it@acme.com', subject:'URGENT: Server maintenance tonight 11PM', hasAttachments:false, attachments:[], preview:'Critical server maintenance scheduled for tonight 11PM-2AM. All systems will be offline.', body:'Hi Team,\n\nWe have critical server maintenance scheduled for tonight from 11:00 PM to 2:00 AM EST. All systems including email, CRM, and ERP will be unavailable during this window.\n\nPlease plan accordingly and save all your work before 10:45 PM.\n\nIT Operations', time: new Date().toISOString(), category:'Urgent', isRead:false },
+    { id:'d3', from:'Michael Chen', fromEmail:'mchen@supplier.com', subject:'Re: Contract renewal - action needed by Friday', hasAttachments:true, attachments:null, preview:'Hi, following up on the contract renewal. We need your signature by Friday EOD to avoid a gap in services.', body:'Hi,\n\nFollowing up on the contract renewal discussion from last week. We need your signature by Friday EOD to avoid any gap in services starting December 1st.\n\nI\'ve attached the updated contract with the revised pricing terms we agreed on (5% increase for 2025). Please review and sign at your earliest convenience.\n\nBest regards,\nMichael Chen\nSupplier Relations', time: new Date(Date.now()-3600000).toISOString(), category:'Action Required', isRead:false },
+    { id:'d4', from:'Analytics Team', fromEmail:'analytics@acme.com', subject:'Daily KPI Dashboard - Nov 20', hasAttachments:false, attachments:[], preview:'Daily metrics: DAU 12,430 (+3.2%), Conversion 4.1%, Avg order value $87.', body:'Daily KPI Summary — November 20\n\nDAU: 12,430 (+3.2% DoD)\nConversion Rate: 4.1% (+0.2pp)\nAvg Order Value: $87 (-$2 DoD)\nRevenue: $1.08M (+1.5% DoD)\nSupport Tickets Open: 47 (stable)\nNPS Score: 72 (weekly)\n\nNotable: Mobile conversion surpassed desktop for the first time (4.3% vs 3.9%).', time: new Date(Date.now()-7200000).toISOString(), category:'Daily Reports', isRead:true },
+    { id:'d5', from:'HR - Benefits Team', fromEmail:'hr@acme.com', subject:'Open enrollment ends Dec 1 — reminder', hasAttachments:false, attachments:[], preview:'This is a reminder that benefits open enrollment ends December 1st. Please log in to the benefits portal.', body:'Hi everyone,\n\nThis is a friendly reminder that benefits open enrollment ends December 1st at 5:00 PM. If you don\'t make changes, your current elections will roll over automatically.\n\nNew this year: Enhanced dental coverage and expanded mental health benefits. Log into the benefits portal at hr.acme.com to review and update your selections.\n\nBest,\nHR Team', time: new Date(Date.now()-10800000).toISOString(), category:'Informational', isRead:true },
+    { id:'d6', from:'David Park', fromEmail:'dpark@acme.com', subject:'Board meeting prep — slides need your review', hasAttachments:true, attachments:null, preview:'The board deck is ready for your review. Main changes on slides 8 and 14 re: expansion strategy.', body:'Hi,\n\nThe board meeting deck is ready for your review. I\'ve made the changes we discussed — the main updates are on slides 8 (revised expansion strategy timeline) and 14 (updated headcount plan for 2025).\n\nPlease review by tomorrow noon so we can send to the board by EOD.\n\nThanks,\nDavid', time: new Date(Date.now()-14400000).toISOString(), category:'Action Required', isRead:false },
+  ];
+  updateStats();
+  renderEmailList();
+  document.getElementById('btn-summarize').disabled = false;
+  document.getElementById('conn-badge').className = 'badge-connected';
+  document.getElementById('conn-badge').textContent = '● Demo Mode';
+  document.getElementById('sidebar-connect-box').style.display = 'none';
+  accessToken = 'DEMO';
+  toast('Demo data loaded — 6 sample emails ✓');
+  showScreen('summary');
+}
+
+
+// ─── ATTACHMENTS ──────────────────────────────────────────
+function getFileIcon(name) {
+  const ext = (name||'').split('.').pop().toLowerCase();
+  const icons = { pdf:'📄', doc:'📝', docx:'📝', xls:'📊', xlsx:'📊', ppt:'📋', pptx:'📋', zip:'🗜', png:'🖼', jpg:'🖼', jpeg:'🖼', gif:'🖼', txt:'📃', csv:'📊', mp4:'🎬', mp3:'🎵' };
+  return icons[ext] || '📎';
+}
+
+function formatBytes(b) {
+  if (!b) return '';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+
+function canReadContent(name) {
+  const ext = (name||'').split('.').pop().toLowerCase();
+  return ['pdf','txt','csv','doc','docx'].includes(ext);
+}
+
+async function fetchAttachments(emailId) {
+  const email = emails.find(e=>e.id===emailId);
+  if (!email) return;
+
+  // Use cached attachments if already fetched
+  if (email.attachments !== null) { renderAttachments(emailId, email.attachments); return; }
+
+  // Demo mode: use fake attachments
+  if (accessToken === 'DEMO') {
+    const demoAttach = {
+      'd1': [{ id:'a1', name:'Q3_Revenue_Report_Final.xlsx', size:284672, contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', isInline:false }],
+      'd3': [{ id:'a2', name:'Contract_Renewal_2025.pdf', size:512000, contentType:'application/pdf', isInline:false }, { id:'a3', name:'Pricing_Summary.xlsx', size:98304, contentType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', isInline:false }],
+      'd6': [{ id:'a4', name:'Board_Deck_Nov2024.pptx', size:4194304, contentType:'application/vnd.openxmlformats-officedocument.presentationml.presentation', isInline:false }],
+    };
+    email.attachments = demoAttach[emailId] || [];
+    renderAttachments(emailId, email.attachments);
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/messages/${emailId}/attachments?$select=id,name,size,contentType,isInline`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    email.attachments = (data.value || []).filter(a => !a.isInline);
+    renderAttachments(emailId, email.attachments);
+  } catch {
+    const loader = document.getElementById('attach-loading-' + emailId);
+    if (loader) loader.textContent = 'Could not load attachments.';
+  }
+}
+
+function renderAttachments(emailId, attachments) {
+  const loader = document.getElementById('attach-loading-' + emailId);
+  if (loader) loader.textContent = attachments.length === 0 ? '(none)' : '';
+  const list = document.getElementById('attach-list-' + emailId);
+  if (!list) return;
+  if (!attachments.length) { list.innerHTML = '<span style="font-size:12px;color:var(--text3)">No file attachments.</span>'; return; }
+
+  list.innerHTML = attachments.map(a => `
+    <div class="attach-item" id="attach-item-${a.id}">
+      <span class="attach-icon">${getFileIcon(a.name)}</span>
+      <div class="attach-meta">
+        <div class="attach-name" title="${esc(a.name)}">${esc(a.name)}</div>
+        <div class="attach-size">${formatBytes(a.size)}</div>
+      </div>
+      <div class="attach-actions">
+        <button class="attach-btn attach-btn-dl" onclick="downloadAttachment('${emailId}','${a.id}','${esc(a.name)}')">⬇ Download</button>
+        ${canReadContent(a.name) ? `<button class="attach-btn attach-btn-read" id="readbtn-${a.id}" onclick="readAttachmentContent('${emailId}','${a.id}','${esc(a.name)}')">✦ Read</button>` : ''}
+      </div>
+    </div>
+    <div class="attach-content-box" id="attach-content-${a.id}">
+      <div class="attach-content-label">Extracted content</div>
+      <div id="attach-content-text-${a.id}"></div>
+    </div>`).join('');
+}
+
+async function downloadAttachment(emailId, attachId, name) {
+  if (accessToken === 'DEMO') { toast('Download not available in demo mode.'); return; }
+  try {
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/messages/${emailId}/attachments/${attachId}/$value`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!res.ok) throw new Error();
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+    URL.revokeObjectURL(url);
+    toast('Downloading ' + name);
+  } catch {
+    toast('Download failed. Check token permissions.', 'error');
+  }
+}
+
+async function readAttachmentContent(emailId, attachId, name) {
+  const btn = document.getElementById('readbtn-' + attachId);
+  const box = document.getElementById('attach-content-' + attachId);
+  const textEl = document.getElementById('attach-content-text-' + attachId);
+  if (!box || !textEl) return;
+
+  if (box.classList.contains('open')) { box.classList.remove('open'); return; }
+  box.classList.add('open');
+  if (btn) { btn.disabled = true; btn.textContent = 'Reading...'; }
+  textEl.innerHTML = '<span class="loading">Extracting text...</span>';
+
+  // Demo mode: return fake content
+  if (accessToken === 'DEMO') {
+    const demoContent = {
+      'a1': 'Q3 Revenue Summary\n\nTotal Revenue: $4.2M (+12% vs Q2)\nNorth America: $2.52M (60%)\nEurope: $1.05M (25%)\nAPAC: $630K (15%)\n\nEBITDA Margin: 22% (+2pp)\nNew Customers: 847 (+18%)\nChurn Rate: 2.1% (stable)\nARR: $16.8M\n\nKey wins: Enterprise segment grew 34%, SMB stable.',
+      'a2': 'SERVICE AGREEMENT RENEWAL\n\nParties: Acme Corp & Chen Supplies Ltd\nContract Period: Jan 1 – Dec 31, 2025\nPricing: +5% vs 2024 rates\nPayment Terms: Net 30\n\nSignature required by: Friday EOD\nContact: Michael Chen, mchen@supplier.com',
+      'a3': 'Pricing Summary 2025\n\nService Tier A: $12,500/mo (+5%)\nService Tier B: $8,200/mo (+5%)\nSetup Fee: Waived\nSLA: 99.9% uptime',
+      'a4': 'Board Deck Outline\n\nSlide 1: Executive Summary\nSlide 8: Expansion Strategy (UPDATED) - 18-month timeline, 3 new markets\nSlide 14: Headcount Plan 2025 (UPDATED) - +42 FTEs, $3.2M budget\nSlide 20: Financial Projections - $22M ARR target',
+    };
+    setTimeout(() => {
+      textEl.textContent = demoContent[attachId] || 'No content preview available.';
+      if (btn) { btn.disabled = false; btn.textContent = '✦ Hide'; }
+      summarizeAttachmentForEmail(emailId, attachId, name, demoContent[attachId] || '');
+    }, 800);
+    return;
+  }
+
+  try {
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/messages/${emailId}/attachments/${attachId}`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    const b64 = data.contentBytes || '';
+    const decoded = atob(b64);
+
+    // For text/csv: use as-is. For PDF/Word: extract readable ASCII text
+    let extracted = '';
+    if (name.endsWith('.txt') || name.endsWith('.csv')) {
+      extracted = decoded;
+    } else {
+      // Extract printable ASCII runs (works surprisingly well for PDF/DOCX text streams)
+      const runs = decoded.match(/[ -~\n\r\t]{8,}/g) || [];
+      extracted = runs.filter(r => r.trim().length > 5).join('\n').slice(0, 3000);
+    }
+    extracted = extracted || '(Could not extract readable text from this file.)';
+    textEl.textContent = extracted;
+    if (btn) { btn.disabled = false; btn.textContent = '✦ Hide'; }
+    summarizeAttachmentForEmail(emailId, attachId, name, extracted);
+  } catch {
+    textEl.textContent = 'Could not read attachment content.';
+    if (btn) { btn.disabled = false; btn.textContent = '✦ Read'; }
+  }
+}
+
+async function summarizeAttachmentForEmail(emailId, attachId, name, content) {
+  if (!content || content.length < 50) return;
+  const email = emails.find(e=>e.id===emailId);
+  if (!email) return;
+
+  // Store extracted content on the email object for summary use
+  if (!email.attachmentSummaries) email.attachmentSummaries = {};
+  if (email.attachmentSummaries[attachId]) return; // already summarized
+
+  const prompt = `Summarize this attachment in 2-3 sentences for an executive. Be specific with numbers/dates.
+Filename: ${name}
+Content: ${content.slice(0, 1500)}
+Reply with ONLY the summary, no preamble.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{ role:'user', content: prompt }] })
+    });
+    const data = await res.json();
+    const summary = data.content[0].text;
+    email.attachmentSummaries[attachId] = { name, summary };
+
+    // Append summary note to the attach content box
+    const textEl = document.getElementById('attach-content-text-' + attachId);
+    if (textEl) {
+      const summaryDiv = document.createElement('div');
+      summaryDiv.style.cssText = 'margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--green)';
+      summaryDiv.innerHTML = '<span style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.7">AI Summary</span><br>' + esc(summary);
+      textEl.appendChild(summaryDiv);
+    }
+  } catch {}
+}
+
+// ─── HELPERS ─────────────────────────────────────────────
+function esc(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+}
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+}
+function formatDateFull(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function sameDay(a,b) {
+  if (!a||!b) return false;
+  return new Date(a).toDateString() === new Date(b).toDateString();
+}
+function toast(msg, type) {
+  const t = document.getElementById('toast');
+  t.innerHTML = (type==='error'?'⚠ ':'✓ ') + msg;
+  t.style.color = type==='error'?'var(--red)':'var(--green)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+// initial nav setup
+document.getElementById('screen-summary').style.display = 'flex';
+</script>
+</body>
+</html>
