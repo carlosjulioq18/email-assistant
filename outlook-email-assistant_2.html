@@ -462,6 +462,19 @@
 
         <div class="divider"></div>
 
+        <!-- ANTHROPIC KEY -->
+        <div style="margin-bottom:4px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:6px">✦ Claude API Key</div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:10px;line-height:1.6">Necesaria para generar resúmenes y redactar respuestas con IA. Empieza con <code style="font-size:11px;background:var(--surface3);padding:2px 6px;border-radius:4px;color:var(--teal)">sk-ant-</code></div>
+          <div style="display:flex;gap:8px">
+            <input type="password" class="token-input" id="anthropic-key-input" placeholder="sk-ant-api03-..." style="font-family:'DM Mono',monospace;font-size:12px" />
+            <button class="btn-sm btn-primary" onclick="saveAnthropicKey()">Guardar</button>
+          </div>
+          <div style="font-size:11px;margin-top:6px" id="anthropic-key-status"></div>
+        </div>
+
+        <div class="divider"></div>
+
         <!-- FOLDER RULES -->
         <div style="margin-bottom:16px">
           <div style="font-size:13px;font-weight:500;margin-bottom:10px">📁 Reglas de carpetas activas</div>
@@ -589,6 +602,7 @@ Type casually — click 'Polish with AI' to have Claude rewrite it professionall
 <script>
 // ─── STATE ───────────────────────────────────────────────
 let accessToken = localStorage.getItem('ms_token') || '';
+let anthropicKey = localStorage.getItem('anthropic_key') || '';
 let emails = [];
 let currentFilter = 'all';
 let repliedIds = new Set(JSON.parse(localStorage.getItem('replied_ids') || '[]'));
@@ -615,7 +629,27 @@ window.onload = () => {
   }
   updateDate();
   renderRules();
+  if (anthropicKey) {
+    const st = document.getElementById('anthropic-key-status');
+    if (st) { st.textContent = '✓ API key cargada'; st.style.color = 'var(--green)'; }
+  }
 };
+
+function saveAnthropicKey() {
+  const val = document.getElementById('anthropic-key-input').value.trim();
+  if (!val || !val.startsWith('sk-ant-')) {
+    const st = document.getElementById('anthropic-key-status');
+    st.textContent = 'La key debe empezar con sk-ant-';
+    st.style.color = 'var(--red)';
+    return;
+  }
+  anthropicKey = val;
+  localStorage.setItem('anthropic_key', val);
+  const st = document.getElementById('anthropic-key-status');
+  st.textContent = '✓ API key guardada';
+  st.style.color = 'var(--green)';
+  toast('Claude API key guardada ✓');
+}
 
 function renderRules() {
   const list = document.getElementById('rules-list');
@@ -693,6 +727,27 @@ function setTokenStatus(msg, color) {
   el.style.color = color === 'red' ? 'var(--red)' : 'var(--green)';
 }
 
+
+// ─── CLAUDE API HELPER ───────────────────────────────────
+async function claudeFetch(prompt, maxTokens) {
+  if (!anthropicKey) {
+    toast('Agrega tu Claude API key en ⚙ Settings primero.', 'error');
+    throw new Error('No Anthropic key');
+  }
+  const res = await fetch(CLAUDE_API, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': anthropicKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: maxTokens || 1000, messages: [{ role: 'user', content: prompt }] })
+  });
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
 
 // ─── TEST CONNECTION DIAGNOSTIC ──────────────────────────
 async function testConnection() {
@@ -951,13 +1006,7 @@ ${subjects}
 Reply ONLY with valid JSON array of strings like: ["Daily Reports","Action Required",...] with exactly ${emails.length} entries. No explanation.`;
 
   try {
-    const res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
-    const text = data.content[0].text.trim();
+    const text = (await claudeFetch(prompt, 1000)).trim();
     const clean = text.replace(/```json|```/g,'').trim();
     const cats = JSON.parse(clean);
     cats.forEach((cat, i) => { if (emails[i]) emails[i].category = cat; });
@@ -1017,13 +1066,7 @@ Write a structured daily briefing with these sections:
 Be concise but informative. Use a professional executive assistant tone.`;
 
   try {
-    const res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
-    });
-    const data = await res.json();
-    let text = data.content[0].text;
+    let text = await claudeFetch(prompt, 1000);
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br>');
     document.getElementById('summary-output').innerHTML = text;
     renderCategoryGroups(byCategory);
@@ -1193,13 +1236,7 @@ MY DRAFT REPLY: "${draft}"
 Write ONLY the professional email reply body (no subject line, no "here is your reply" preamble). Keep it concise, clear, and professional. Match the appropriate formality level.`;
 
   try {
-    const res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
-    });
-    const data = await res.json();
-    textEl.textContent = data.content[0].text;
+    textEl.textContent = await claudeFetch(prompt, 1000);
   } catch {
     textEl.innerHTML = '<span style="color:var(--red)">Error generating reply.</span>';
   }
@@ -1221,13 +1258,7 @@ Body: ${email.body?.slice(0,600)||email.preview}
 Write ONLY the email body. Be professional, warm, and concise. Acknowledge receipt and provide an appropriate response based on the email context.`;
 
   try {
-    const res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
-    });
-    const data = await res.json();
-    textEl.textContent = data.content[0].text;
+    textEl.textContent = await claudeFetch(prompt, 1000);
   } catch {
     textEl.innerHTML = '<span style="color:var(--red)">Error drafting reply.</span>';
   }
@@ -1290,13 +1321,7 @@ Draft: "${body}"
 Reply ONLY with the polished email body text. No preamble.`;
 
   try {
-    const res = await fetch(CLAUDE_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role:'user', content: prompt }] })
-    });
-    const data = await res.json();
-    polishedDraft = data.content[0].text;
+    polishedDraft = await claudeFetch(prompt, 1000);
     document.getElementById('compose-preview-text').textContent = polishedDraft;
     document.getElementById('compose-preview').classList.add('open');
     document.getElementById('compose-status').textContent = '';
@@ -1545,13 +1570,7 @@ Content: ${content.slice(0, 1500)}
 Reply with ONLY the summary, no preamble.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{ role:'user', content: prompt }] })
-    });
-    const data = await res.json();
-    const summary = data.content[0].text;
+    const summary = await claudeFetch(prompt, 200);
     email.attachmentSummaries[attachId] = { name, summary };
 
     // Append summary note to the attach content box
