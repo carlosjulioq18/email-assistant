@@ -461,6 +461,24 @@
         </div>
 
         <div class="divider"></div>
+
+        <!-- FOLDER RULES -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:13px;font-weight:500;margin-bottom:10px">📁 Reglas de carpetas activas</div>
+          <div id="rules-list" style="display:flex;flex-direction:column;gap:6px">
+          </div>
+          <button class="btn-sm btn-ghost" style="margin-top:10px;font-size:12px" onclick="showAddRule()">+ Agregar regla</button>
+          <div id="add-rule-form" style="display:none;margin-top:10px;background:var(--surface2);border-radius:var(--r);padding:12px;display:none;flex-direction:column;gap:8px">
+            <input type="email" id="rule-email" class="token-input" style="font-family:inherit;font-size:12px" placeholder="correo@empresa.com" />
+            <input type="text" id="rule-folder" class="token-input" style="font-family:inherit;font-size:12px" placeholder="Nombre de carpeta" />
+            <div style="display:flex;gap:8px">
+              <button class="btn-sm btn-primary" onclick="addRule()">Agregar</button>
+              <button class="btn-sm btn-ghost" onclick="document.getElementById('add-rule-form').style.display='none'">Cancelar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="btn-sm btn-ghost" onclick="loadDemoData()">▶ Try Demo Mode</button>
           <span style="font-size:12px;color:var(--text3)">Load sample emails to explore the app without connecting</span>
@@ -578,6 +596,15 @@ let polishedDraft = '';
 
 const CLAUDE_API = 'https://api.anthropic.com/v1/messages';
 
+// ─── FOLDER ROUTING RULES ────────────────────────────────
+const FOLDER_RULES = [
+  { email: 'canastas@jumbocapital.com.pa', folder: 'Bodega y Despacho' },
+  { email: 'mbrayton@jumbocapital.com.pa', folder: 'Facturacion' },
+  { email: 'apinzon@jumbocapital.com.pa',  folder: 'Facturacion' },
+];
+// Cache: folderName -> folderId
+let folderIdCache = {};
+
 // ─── INIT ───────────────────────────────────────────────
 window.onload = () => {
   if (accessToken) {
@@ -587,7 +614,45 @@ window.onload = () => {
     document.getElementById('token-status').textContent = '✓ Token loaded from session';
   }
   updateDate();
+  renderRules();
 };
+
+function renderRules() {
+  const list = document.getElementById('rules-list');
+  if (!list) return;
+  list.innerHTML = FOLDER_RULES.map((r, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--surface2);border-radius:8px;padding:8px 12px;font-size:12px">
+      <span style="color:var(--teal);flex:1">${r.email}</span>
+      <span style="color:var(--text3)">→</span>
+      <span style="color:var(--accent2);font-weight:500">📁 ${r.folder}</span>
+      <button onclick="removeRule(${i})" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0 2px" title="Eliminar">✕</button>
+    </div>`).join('') || '<div style="font-size:12px;color:var(--text3)">No hay reglas configuradas.</div>';
+}
+
+function showAddRule() {
+  const form = document.getElementById('add-rule-form');
+  form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+}
+
+function addRule() {
+  const email = document.getElementById('rule-email').value.trim().toLowerCase();
+  const folder = document.getElementById('rule-folder').value.trim();
+  if (!email || !folder) { toast('Completa ambos campos.'); return; }
+  if (FOLDER_RULES.find(r => r.email === email)) { toast('Ese correo ya tiene una regla.'); return; }
+  FOLDER_RULES.push({ email, folder });
+  document.getElementById('rule-email').value = '';
+  document.getElementById('rule-folder').value = '';
+  document.getElementById('add-rule-form').style.display = 'none';
+  renderRules();
+  toast(`Regla agregada: ${email} → ${folder} ✓`);
+}
+
+function removeRule(i) {
+  const r = FOLDER_RULES[i];
+  FOLDER_RULES.splice(i, 1);
+  renderRules();
+  toast(`Regla eliminada: ${r.email}`);
+}
 
 function updateDate() {
   const d = new Date();
@@ -777,14 +842,16 @@ async function fetchEmails() {
     }
 
     emails = allEmails;
-    setProgress(85, `Categorizing ${emails.length} emails with AI...`);
+    setProgress(82, `Categorizing ${emails.length} emails with AI...`);
     await categorizeEmails();
+    setProgress(91, `Applying folder rules...`);
+    const moveResult = await applyFolderRules();
     setProgress(100, 'Done!');
     updateStats();
     renderEmailList();
     document.getElementById('btn-summarize').disabled = false;
     document.getElementById('summary-output').innerHTML =
-      `<span style="color:var(--green)">✓ ${emails.length} unread emails fetched and categorized. Click "Generate Summary" for your AI briefing.</span>`;
+      `<span style="color:var(--green)">✓ ${emails.length} unread emails fetched and categorized.${moveResult ? ' ' + moveResult : ''} Click "Generate Summary" for your AI briefing.</span>`;
     toast(`Fetched ${emails.length} unread emails ✓`);
   } catch(e) {
     document.getElementById('summary-output').innerHTML =
@@ -793,6 +860,86 @@ async function fetchEmails() {
   }
   btn.textContent = '⟳ Fetch Emails';
   btn.disabled = false;
+}
+
+
+// ─── FOLDER ROUTING ───────────────────────────────────────
+
+async function getOrCreateFolder(folderName) {
+  if (folderIdCache[folderName]) return folderIdCache[folderName];
+  if (accessToken === 'DEMO') return 'demo-folder-id';
+
+  // Try to find existing folder
+  try {
+    const res = await fetch(
+      `https://graph.microsoft.com/v1.0/me/mailFolders?$filter=displayName eq '${encodeURIComponent(folderName)}'&$select=id,displayName`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    const data = await res.json();
+    if (data.value && data.value.length > 0) {
+      folderIdCache[folderName] = data.value[0].id;
+      return data.value[0].id;
+    }
+  } catch {}
+
+  // Create folder if it doesn't exist
+  try {
+    const res = await fetch('https://graph.microsoft.com/v1.0/me/mailFolders', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ displayName: folderName })
+    });
+    const data = await res.json();
+    if (data.id) {
+      folderIdCache[folderName] = data.id;
+      toast(`Carpeta creada: "${folderName}" ✓`);
+      return data.id;
+    }
+  } catch {}
+
+  return null;
+}
+
+async function applyFolderRules() {
+  if (accessToken === 'DEMO') return '(demo: folder routing simulado)';
+
+  // Find emails matching any rule
+  const toMove = [];
+  emails.forEach(email => {
+    const rule = FOLDER_RULES.find(r => r.email.toLowerCase() === email.fromEmail.toLowerCase());
+    if (rule) toMove.push({ email, folder: rule.folder });
+  });
+
+  if (!toMove.length) return '';
+
+  // Group by folder
+  const byFolder = {};
+  toMove.forEach(({ email, folder }) => {
+    if (!byFolder[folder]) byFolder[folder] = [];
+    byFolder[folder].push(email);
+  });
+
+  let totalMoved = 0;
+  for (const [folderName, folderEmails] of Object.entries(byFolder)) {
+    const folderId = await getOrCreateFolder(folderName);
+    if (!folderId) continue;
+
+    for (const email of folderEmails) {
+      try {
+        const res = await fetch(`https://graph.microsoft.com/v1.0/me/messages/${email.id}/move`, {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ destinationId: folderId })
+        });
+        if (res.ok) {
+          email.movedToFolder = folderName;
+          totalMoved++;
+        }
+      } catch {}
+    }
+  }
+
+  return totalMoved > 0 ? `📁 ${totalMoved} correo(s) movido(s) a sus carpetas.` : '';
 }
 
 // ─── CATEGORIZE ──────────────────────────────────────────
