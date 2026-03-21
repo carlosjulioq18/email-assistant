@@ -244,6 +244,27 @@
   .attach-content-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 12px; line-height: 1.7; color: var(--text2); white-space: pre-wrap; max-height: 160px; overflow-y: auto; display: none; }
   .attach-content-box.open { display: block; }
   .attach-content-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  /* ─── SPECIAL REPORTS ─── */
+  .special-report { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 20px; margin-bottom: 16px; }
+  .special-report-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .special-report-title { font-size: 14px; font-weight: 500; }
+  .special-report-badge { font-size: 10px; padding: 2px 8px; border-radius: 99px; background: rgba(79,125,255,0.15); color: var(--accent); }
+  .special-report-meta { font-size: 11px; color: var(--text3); margin-left: auto; }
+  .report-table-wrap { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); }
+  .report-table { width: 100%; border-collapse: collapse; font-size: 11.5px; min-width: 600px; }
+  .report-table th { background: var(--surface2); padding: 8px 12px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); border-bottom: 1px solid var(--border2); white-space: nowrap; font-weight: 500; }
+  .report-table th.day-col { text-align: center; min-width: 70px; }
+  .report-table td { padding: 7px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .report-table td.day-cell { text-align: center; }
+  .report-table tr:last-child td { border-bottom: none; }
+  .report-table tr:hover td { background: var(--surface2); }
+  .report-table .cell-val { font-weight: 500; color: var(--amber); }
+  .report-table .cell-zero { color: var(--text3); }
+  .report-table .cell-ok { color: var(--green); font-size: 10px; }
+  .report-table .row-label { font-weight: 500; color: var(--text); white-space: nowrap; }
+  .report-table .row-sub { font-size: 10px; color: var(--text3); }
+  .report-processing { font-size: 12px; color: var(--text3); font-style: italic; padding: 16px 0; }
+
 
   /* ─── EMAIL DETAIL ─── */
   .email-detail {
@@ -545,6 +566,7 @@
       </div>
 
       <div id="summary-cats"></div>
+      <div id="special-reports-container"></div>
     </div>
 
     <!-- EMAILS SCREEN -->
@@ -656,6 +678,13 @@ const FOLDER_RULES = [
   { email: 'mbrayton@jumbocapital.com.pa', folder: 'Facturacion' },
   { email: 'apinzon@jumbocapital.com.pa',  folder: 'Facturacion' },
   { email: 'ychang@jumbocapital.com.pa',   folder: 'Bodega y Despacho' },
+  { email: 'ychan@jumbocapital.com.pa',    folder: 'Bodega y Despacho' },
+  { email: 'despacho@jumbocapitalpty.onmicrosoft.com', folder: 'Bodega y Despacho' },
+  { email: 'nlopez@jumbocapital.com.pa',   folder: 'Bodega y Despacho' },
+  { email: 'afuentes@jumbocapital.com.pa', folder: 'Facturacion' },
+  { email: 'vlopez@jumbocapital.com.pa',   folder: 'Facturacion' },
+  { email: 'lgutierrez@jumbocapital.com.pa', folder: 'Bodega y Despacho' },
+  { email: 'no-reply@driv.in',             folder: 'Bodega y Despacho' },
 ];
 // Cache: folderName -> folderId
 let folderIdCache = {};
@@ -1046,19 +1075,60 @@ const CATEGORY_RULES = {
     'canastas@jumbocapital.com.pa',
     'mbrayton@jumbocapital.com.pa',
     'apinzon@jumbocapital.com.pa',
+    'ychan@jumbocapital.com.pa',
     'ychang@jumbocapital.com.pa',
+    'despacho@jumbocapitalpty.onmicrosoft.com',
+    'lgutierrez@jumbocapital.com.pa',
+    'vlopez@jumbocapital.com.pa',
+    'nlopez@jumbocapital.com.pa',
+    'no-reply@driv.in',
+    'afuentes@jumbocapital.com.pa',
   ],
   dailyReportSubjects: [
     'cuadro monto inicial',
+    'cuadro de monto inicial',
     'cuadro monto',
     'facturacion del dia',
+    'picking despacho',
+    'faltante producto',
+    'horas llegada',
+    'horas llegada/salida',
+    'inventario global de canastas',
+    'inventario final productos',
+    'reporte salida/entrada canasta',
+    'diferencia de canastas',
+    'reporte de canasta drivin',
+    'canastas en mal estado',
+    'caja del',
+    'reporte diario - choferes',
+    'entregas utt',
+    'despacho de productos golden',
+    'reporte diario',
+    'reporte de liquidacion',
+    'reporte de liquidación',
+    'inventario materia prima',
+    'inventario p.terminado',
+    'controles de ruta',
+    'nc pendiente por subir',
+    'reporte de notas de credito',
+    'reporte de notas de crédito',
+    'acumulado de ajuste',
+    'mermas acumuladas',
+    'adelanto para la facturacion',
+    'facturacion de pedido',
+    'inventario final',
+    'picking',
+    'saldo ',
   ],
   urgentSubjects: [
     'urgent', 'urgente', 'asap', 'inmediato', 'critico', 'critical',
+    'corte del servicio', 'deuda', 'grave problema',
   ],
   actionSubjects: [
     'action required', 'accion requerida', 'aprobacion', 'approval',
-    'firma', 'signature', 'pendiente', 'revisar', 'review needed',
+    'firma', 'signature', 'confirmacion de pago', 'confirmación de pago',
+    'order confirmation', 'orden de compra', 'extension de credito',
+    'extension de crédito',
   ],
 };
 
@@ -1174,6 +1244,9 @@ Be concise but informative. Use a professional executive assistant tone.`;
     text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g,'<br>');
     document.getElementById('summary-output').innerHTML = text;
     renderCategoryGroups(byCategory);
+    // Generate special reports for Daily Reports
+    const dailyReports = byCategory['Daily Reports'] || [];
+    if (dailyReports.length) generateSpecialReports(dailyReports);
   } catch(e) {
     document.getElementById('summary-output').innerHTML = '<span style="color:var(--red)">Error generating summary. Check Claude API.</span>';
   }
@@ -1857,6 +1930,375 @@ function exportToCSV() {
   a.href = url; a.download = 'correos_semana.csv'; a.click();
   URL.revokeObjectURL(url);
   toast('Exportado como correos_semana.csv ✓');
+}
+
+
+// ─── SPECIAL REPORTS ENGINE ───────────────────────────────
+
+async function generateSpecialReports(dailyEmails) {
+  const container = document.getElementById('special-reports-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Identify relevant emails by subject keywords
+  const faltanteEmails   = dailyEmails.filter(e => e.subject.toLowerCase().includes('faltante producto'));
+  const horasEmails      = dailyEmails.filter(e => e.subject.toLowerCase().includes('horas llegada') || e.subject.toLowerCase().includes('horas llegada/salida'));
+  const canastasEmails   = dailyEmails.filter(e => e.subject.toLowerCase().includes('inventario global de canastas'));
+
+  if (faltanteEmails.length)  container.appendChild(await buildFaltanteReport(faltanteEmails));
+  if (horasEmails.length)     container.appendChild(await buildHorasReport(horasEmails));
+  if (canastasEmails.length)  container.appendChild(await buildCanastasReport(canastasEmails));
+}
+
+function makeReportCard(title, badge, metaText) {
+  const card = document.createElement('div');
+  card.className = 'special-report';
+  card.innerHTML = `
+    <div class="special-report-header">
+      <span style="font-size:18px">${badge}</span>
+      <span class="special-report-title">${title}</span>
+      <span class="special-report-meta">${metaText}</span>
+    </div>
+    <div class="report-body"></div>`;
+  return card;
+}
+
+// ── REPORT 1: FALTANTE PRODUCTO ───────────────────────────
+async function buildFaltanteReport(emails) {
+  const card = makeReportCard('Faltante de Producto — DTT', '📦', `${emails.length} reportes`);
+  const body = card.querySelector('.report-body');
+  body.innerHTML = '<div class="report-processing">✦ Extrayendo datos de faltantes...</div>';
+
+  // Extract data from each email body using Claude
+  const allData = []; // [{date, route, product, qty}]
+  for (const email of emails) {
+    const dateMatch = email.subject.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
+    const dateStr = dateMatch ? dateMatch[1] : formatDate(email.time);
+    const bodyText = email.body || email.preview || '';
+    if (!bodyText || bodyText.length < 10) continue;
+
+    const prompt = `Extract shortage data from this email body. Return ONLY a JSON array of objects with keys: route, product, qty (number).
+Example: [{"route":"PINZON 01","product":"HOT DOG","qty":34}]
+If no data found, return [].
+Email body: ${bodyText.slice(0, 800)}`;
+
+    try {
+      const raw = await claudeFetch(prompt, 400);
+      const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+      const items = JSON.parse(clean);
+      items.forEach(item => allData.push({ date: dateStr, ...item }));
+    } catch { /* skip */ }
+  }
+
+  if (!allData.length) {
+    body.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">No se encontraron datos de faltantes en los correos.</div>';
+    return card;
+  }
+
+  // Build pivot: rows = product+route, cols = dates
+  const dates = [...new Set(allData.map(d => d.date))].sort();
+  const rowKeys = [...new Set(allData.map(d => `${d.product}||${d.route}`))];
+
+  const pivot = {};
+  allData.forEach(d => {
+    const key = `${d.product}||${d.route}`;
+    if (!pivot[key]) pivot[key] = {};
+    pivot[key][d.date] = (pivot[key][d.date] || 0) + d.qty;
+  });
+
+  // Render table
+  const shortDates = dates.map(d => {
+    const parts = d.match(/(\d+)[-/](\d+)/);
+    return parts ? `${parts[1]}/${parts[2]}` : d;
+  });
+
+  let html = `<div class="report-table-wrap"><table class="report-table">
+    <thead><tr>
+      <th>Producto</th><th>Ruta</th>
+      ${shortDates.map(d => `<th class="day-col">${d}</th>`).join('')}
+      <th class="day-col" style="color:var(--amber)">Total</th>
+    </tr></thead><tbody>`;
+
+  rowKeys.forEach(key => {
+    const [product, route] = key.split('||');
+    const total = dates.reduce((s, d) => s + (pivot[key][d] || 0), 0);
+    html += `<tr>
+      <td class="row-label">${esc(product)}</td>
+      <td class="row-sub">${esc(route)}</td>
+      ${dates.map(d => {
+        const v = pivot[key][d] || 0;
+        return v > 0
+          ? `<td class="day-cell"><span class="cell-val">${v}</span></td>`
+          : `<td class="day-cell cell-zero">—</td>`;
+      }).join('')}
+      <td class="day-cell"><strong style="color:var(--amber)">${total}</strong></td>
+    </tr>`;
+  });
+
+  // Totals row
+  html += `<tr style="background:var(--surface2)">
+    <td colspan="2" style="font-weight:500;font-size:11px;color:var(--text3)">TOTAL DEL DÍA</td>
+    ${dates.map(d => {
+      const dayTotal = allData.filter(x => x.date === d).reduce((s,x) => s + x.qty, 0);
+      return `<td class="day-cell"><strong style="color:var(--red)">${dayTotal || '—'}</strong></td>`;
+    }).join('')}
+    <td class="day-cell"><strong style="color:var(--red)">${allData.reduce((s,x) => s+x.qty, 0)}</strong></td>
+  </tr>`;
+
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+  return card;
+}
+
+// ── REPORT 2: HORAS LLEGADA/SALIDA ────────────────────────
+async function buildHorasReport(emails) {
+  const card = makeReportCard('Horas Llegada / Salida — DTT', '🕐', `${emails.length} reportes`);
+  const body = card.querySelector('.report-body');
+  body.innerHTML = '<div class="report-processing">✦ Procesando horas de choferes...</div>';
+
+  const allData = []; // [{date, alquilado, chofer, llegada, salida}]
+
+  for (const email of emails) {
+    const dateMatch = email.subject.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
+    const dateStr = dateMatch ? dateMatch[1] : formatDate(email.time);
+    const bodyText = email.body || email.preview || '';
+
+    // Try text extraction first
+    if (bodyText && bodyText.length > 20) {
+      const prompt = `Extract driver hours from this email. Return ONLY a JSON array with keys: alquilado, chofer, llegada, salida.
+Example: [{"alquilado":"PINZON 01","chofer":"Felix Bravo","llegada":"8:05AM","salida":"8:20AM"}]
+If no data return [].
+Email body: ${bodyText.slice(0, 1000)}`;
+      try {
+        const raw = await claudeFetch(prompt, 600);
+        const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+        const items = JSON.parse(clean);
+        items.forEach(item => allData.push({ date: dateStr, ...item }));
+        if (items.length > 0) continue;
+      } catch { /* fall through to attachment */ }
+    }
+
+    // Try reading from image attachment if no text data found
+    if (email.hasAttachments && accessToken !== 'DEMO') {
+      try {
+        const attRes = await fetch(
+          `https://graph.microsoft.com/v1.0/me/messages/${email.id}/attachments?$select=id,name,contentType,contentBytes`,
+          { headers: { Authorization: 'Bearer ' + accessToken } }
+        );
+        const attData = await attRes.json();
+        const imgAtt = (attData.value || []).find(a =>
+          a.contentType && a.contentType.startsWith('image/') && !a.isInline
+        );
+        if (imgAtt && imgAtt.contentBytes) {
+          const ocrPrompt = `This is a base64 image of a table showing driver arrival/departure times. Extract ALL rows.
+Return ONLY a JSON array with keys: alquilado, chofer, llegada, salida.
+Example: [{"alquilado":"PINZON 01","chofer":"Felix Bravo","llegada":"8:05AM","salida":"8:20AM"}]`;
+          const ocrRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': anthropicKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 800,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: imgAtt.contentType, data: imgAtt.contentBytes } },
+                  { type: 'text', text: ocrPrompt }
+                ]
+              }]
+            })
+          });
+          const ocrData = await ocrRes.json();
+          const raw = ocrData.content[0].text;
+          const clean = raw.replace(/\`\`\`json|\`\`\`/g,'').trim();
+          const items = JSON.parse(clean);
+          items.forEach(item => allData.push({ date: dateStr, ...item }));
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  // Demo data fallback
+  if (!allData.length && accessToken === 'DEMO') {
+    const demoDates = ['21/3','20/3','19/3'];
+    ['PINZON 01','PINZON 02','PINZON 03','PTL 01','PTL 02'].forEach(ruta => {
+      demoDates.forEach(d => {
+        allData.push({ date: d, alquilado: ruta, chofer: 'Chofer Demo', llegada: '8:00AM', salida: '8:15AM' });
+      });
+    });
+  }
+
+  if (!allData.length) {
+    body.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">No se pudieron extraer datos de horas.</div>';
+    return card;
+  }
+
+  // Group by alquilado, show latest entry per day
+  const dates = [...new Set(allData.map(d => d.date))].sort().reverse().slice(0, 7);
+  const rutas = [...new Set(allData.map(d => d.alquilado))].sort();
+
+  let html = `<div class="report-table-wrap"><table class="report-table">
+    <thead><tr>
+      <th>Alquilado</th><th>Chofer</th>
+      ${dates.map(d => `<th class="day-col" colspan="2" style="border-left:1px solid var(--border2)">${d}</th>`).join('')}
+    </tr>
+    <tr>
+      <th></th><th></th>
+      ${dates.map(() => '<th class="day-col" style="color:var(--green)">Llegada</th><th class="day-col" style="color:var(--amber)">Salida</th>').join('')}
+    </tr></thead><tbody>`;
+
+  rutas.forEach(ruta => {
+    const rutaData = allData.filter(d => d.alquilado === ruta);
+    const latestChofer = rutaData[0]?.chofer || '—';
+    html += `<tr>
+      <td class="row-label">${esc(ruta)}</td>
+      <td style="font-size:11px;color:var(--text2)">${esc(latestChofer)}</td>
+      ${dates.map(d => {
+        const entry = rutaData.find(x => x.date === d);
+        if (entry) {
+          return `<td class="day-cell" style="color:var(--green);border-left:1px solid var(--border)">${esc(entry.llegada||'—')}</td>
+                  <td class="day-cell" style="color:var(--amber)">${esc(entry.salida||'—')}</td>`;
+        }
+        return '<td class="day-cell cell-zero" style="border-left:1px solid var(--border)">—</td><td class="day-cell cell-zero">—</td>';
+      }).join('')}
+    </tr>`;
+  });
+
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+  return card;
+}
+
+// ── REPORT 3: INVENTARIO GLOBAL CANASTAS ──────────────────
+async function buildCanastasReport(emails) {
+  const card = makeReportCard('Inventario Global de Canastas', '🧺', `${emails.length} reportes`);
+  const body = card.querySelector('.report-body');
+  body.innerHTML = '<div class="report-processing">✦ Leyendo imágenes de inventario con OCR...</div>';
+
+  const allData = []; // [{date, tipo, cantidad}]
+
+  for (const email of emails) {
+    const dateMatch = email.subject.match(/(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})/);
+    const dateStr = dateMatch ? dateMatch[1] : formatDate(email.time);
+    const bodyText = email.body || email.preview || '';
+
+    // Try text first
+    if (bodyText && bodyText.length > 30) {
+      const prompt = `Extract basket/canasta inventory from this email. Return ONLY JSON array with keys: tipo (basket type/name), cantidad (number).
+Example: [{"tipo":"CANASTA PLASTICA GRANDE","cantidad":450}]
+If no data return [].
+Text: ${bodyText.slice(0, 800)}`;
+      try {
+        const raw = await claudeFetch(prompt, 400);
+        const items = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,'').trim());
+        items.forEach(item => allData.push({ date: dateStr, ...item }));
+        if (items.length > 0) continue;
+      } catch { /* try image */ }
+    }
+
+    // OCR image attachment
+    if (email.hasAttachments && accessToken !== 'DEMO') {
+      try {
+        const attRes = await fetch(
+          `https://graph.microsoft.com/v1.0/me/messages/${email.id}/attachments?$select=id,name,contentType,contentBytes,isInline`,
+          { headers: { Authorization: 'Bearer ' + accessToken } }
+        );
+        const attData = await attRes.json();
+        const imgAtt = (attData.value || []).find(a =>
+          a.contentType && a.contentType.startsWith('image/') && !a.isInline
+        );
+        if (imgAtt && imgAtt.contentBytes) {
+          const ocrRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-api-key': anthropicKey,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 800,
+              messages: [{
+                role: 'user',
+                content: [
+                  { type: 'image', source: { type: 'base64', media_type: imgAtt.contentType, data: imgAtt.contentBytes } },
+                  { type: 'text', text: 'Extract ALL basket types and quantities from this inventory table image. Return ONLY a JSON array with keys: tipo (basket type name), cantidad (number). Example: [{"tipo":"CANASTA GRANDE","cantidad":450}]. No explanation.' }
+                ]
+              }]
+            })
+          });
+          const ocrData = await ocrRes.json();
+          const items = JSON.parse(ocrData.content[0].text.replace(/\`\`\`json|\`\`\`/g,'').trim());
+          items.forEach(item => allData.push({ date: dateStr, ...item }));
+        }
+      } catch { /* skip */ }
+    }
+  }
+
+  // Demo fallback
+  if (!allData.length && accessToken === 'DEMO') {
+    const demoDates = ['21/3','20/3','19/3'];
+    const tipos = ['CANASTA PLASTICA GRANDE','CANASTA PLASTICA MEDIANA','CANASTA METALICA'];
+    tipos.forEach(t => demoDates.forEach(d =>
+      allData.push({ date: d, tipo: t, cantidad: Math.floor(Math.random()*200+300) })
+    ));
+  }
+
+  if (!allData.length) {
+    body.innerHTML = '<div style="font-size:12px;color:var(--text3);padding:8px 0">No se pudieron extraer datos de inventario de canastas.</div>';
+    return card;
+  }
+
+  // Pivot: rows = tipo de canasta, cols = dates
+  const dates = [...new Set(allData.map(d => d.date))].sort().reverse().slice(0, 10);
+  const tipos = [...new Set(allData.map(d => d.tipo))].sort();
+  const pivot = {};
+  allData.forEach(d => {
+    if (!pivot[d.tipo]) pivot[d.tipo] = {};
+    pivot[d.tipo][d.date] = d.cantidad;
+  });
+
+  const shortDates = dates.map(d => {
+    const parts = d.match(/(\d+)[-/](\d+)/);
+    return parts ? `${parts[1]}/${parts[2]}` : d;
+  });
+
+  let html = `<div class="report-table-wrap"><table class="report-table">
+    <thead><tr>
+      <th>Tipo de Canasta</th>
+      ${shortDates.map(d => `<th class="day-col">${d}</th>`).join('')}
+    </tr></thead><tbody>`;
+
+  tipos.forEach(tipo => {
+    html += `<tr>
+      <td class="row-label">${esc(tipo)}</td>
+      ${dates.map(d => {
+        const v = pivot[tipo]?.[d];
+        return v !== undefined
+          ? `<td class="day-cell"><span class="${v < 100 ? 'cell-val' : ''}">${v}</span></td>`
+          : '<td class="day-cell cell-zero">—</td>';
+      }).join('')}
+    </tr>`;
+  });
+
+  // Totals row
+  html += `<tr style="background:var(--surface2)">
+    <td style="font-weight:500;font-size:11px;color:var(--text3)">TOTAL</td>
+    ${dates.map(d => {
+      const total = allData.filter(x => x.date === d).reduce((s,x) => s + (x.cantidad||0), 0);
+      return `<td class="day-cell"><strong style="color:var(--accent)">${total || '—'}</strong></td>`;
+    }).join('')}
+  </tr>`;
+
+  html += '</tbody></table></div>';
+  body.innerHTML = html;
+  return card;
 }
 
 // ─── HELPERS ─────────────────────────────────────────────
