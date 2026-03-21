@@ -909,6 +909,39 @@ async function testConnection() {
     log('❌','Mail.Read','Network error: ' + e.message,'var(--red)');
   }
 
+  // 5. Live test — Claude API
+  try {
+    log('⏳','Testing Claude API','Calling Anthropic...','var(--text3)');
+    if (!anthropicKey) {
+      log('❌','Claude API','No API key found — add it in Settings above','var(--red)');
+    } else {
+      const rc = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 20, messages: [{ role:'user', content:'Say OK' }] })
+      });
+      const rd = await rc.json();
+      if (rc.ok) {
+        log('✅','Claude API','OK — ' + (rd.content?.[0]?.text || 'connected'), 'var(--green)');
+      } else {
+        log('❌','Claude API', rd.error?.type + ': ' + rd.error?.message, 'var(--red)');
+        if (rd.error?.type === 'authentication_error') {
+          log('👉','Fix','API key is invalid or expired. Go to console.anthropic.com → API Keys → create a new one.','var(--amber)');
+        } else if (rd.error?.type === 'credit_balance_is_too_low') {
+          log('👉','Fix','Your Anthropic account has no credits. Add credits at console.anthropic.com → Billing.','var(--amber)');
+        }
+      }
+    }
+  } catch(e) {
+    log('❌','Claude API','Network error: ' + e.message + ' — GitHub Pages may be blocking Anthropic calls','var(--red)');
+    log('👉','Fix','This is a CORS issue. The anthropic-dangerous-direct-browser-access header should fix it — check browser console (F12) for details.','var(--amber)');
+  }
+
   btn.textContent = '🔍 Test Connection'; btn.disabled = false;
 }
 
