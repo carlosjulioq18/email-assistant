@@ -345,6 +345,19 @@
     text-align: center; padding: 60px 20px; color: var(--text3); font-size: 14px;
   }
   .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* ─── WEEKLY TABLE ─── */
+  .week-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .week-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: .06em; color: var(--text3); border-bottom: 1px solid var(--border2); background: var(--surface); position: sticky; top: 0; }
+  .week-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  .week-table tr:hover td { background: var(--surface2); }
+  .week-table .td-from { font-weight: 500; color: var(--text); min-width: 180px; }
+  .week-table .td-subject { color: var(--text2); }
+  .week-table .td-date { color: var(--text3); white-space: nowrap; min-width: 120px; }
+  .week-table .td-cat select { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: 6px; padding: 3px 6px; font-size: 11px; font-family: inherit; cursor: pointer; outline: none; }
+  .table-wrap { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); }
+  .table-search { background: var(--surface2); border: 1px solid var(--border2); color: var(--text); border-radius: var(--r); padding: 8px 14px; font-size: 13px; font-family: inherit; outline: none; width: 260px; }
+  .table-search:focus { border-color: var(--accent); }
   .empty-state h3 { font-size: 16px; color: var(--text2); margin-bottom: 6px; }
 </style>
 </head>
@@ -376,6 +389,10 @@
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="3" width="14" height="10" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M1 5l7 5 7-5" stroke="currentColor" stroke-width="1.3"/></svg>
       All Unread
       <span class="nav-count has" id="inbox-count">0</span>
+    </div>
+    <div class="nav-item" id="nav-table" onclick="showScreen('table')">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><rect x="1" y="1" width="14" height="14" rx="1.5" stroke="currentColor" stroke-width="1.3"/><line x1="1" y1="5.5" x2="15" y2="5.5" stroke="currentColor" stroke-width="1.3"/><line x1="1" y1="10" x2="15" y2="10" stroke="currentColor" stroke-width="1.3"/><line x1="6" y1="5.5" x2="6" y2="15" stroke="currentColor" stroke-width="1.3"/></svg>
+      Tabla Semanal
     </div>
     <div class="nav-item" id="nav-compose" onclick="showScreen('compose')">
       <svg class="nav-icon" viewBox="0 0 16 16" fill="none"><path d="M2 13l2-2 8-8 2 2-8 8-2 2z" stroke="currentColor" stroke-width="1.3"/><path d="M10 3l3 3" stroke="currentColor" stroke-width="1.3"/></svg>
@@ -557,6 +574,29 @@
       <div class="email-detail" id="email-detail"></div>
     </div>
 
+    <!-- TABLE SCREEN -->
+    <div id="screen-table" style="padding:28px;display:none;flex-direction:column;gap:20px">
+      <div class="screen-header">
+        <div>
+          <h2>Tabla Semanal</h2>
+          <div style="font-size:12px;color:var(--text3);margin-top:2px">Todos los correos de los últimos 7 días</div>
+        </div>
+        <div class="screen-header-actions">
+          <input type="text" class="table-search" id="table-search" placeholder="Buscar remitente o subject..." oninput="filterTable(this.value)" />
+          <button class="btn-sm btn-ghost" onclick="fetchWeeklyTable()" id="btn-fetch-table">⟳ Cargar</button>
+          <button class="btn-sm btn-green" onclick="exportToCSV()">⬇ Exportar Excel</button>
+        </div>
+      </div>
+      <div id="table-stats" style="display:flex;gap:12px;flex-wrap:wrap"></div>
+      <div id="table-container">
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <h3>Tabla vacía</h3>
+          <p>Haz clic en "Cargar" para traer todos los correos de la última semana</p>
+        </div>
+      </div>
+    </div>
+
     <!-- COMPOSE SCREEN -->
     <div id="screen-compose">
       <div class="screen-header">
@@ -615,6 +655,7 @@ const FOLDER_RULES = [
   { email: 'canastas@jumbocapital.com.pa', folder: 'Bodega y Despacho' },
   { email: 'mbrayton@jumbocapital.com.pa', folder: 'Facturacion' },
   { email: 'apinzon@jumbocapital.com.pa',  folder: 'Facturacion' },
+  { email: 'ychang@jumbocapital.com.pa',   folder: 'Bodega y Despacho' },
 ];
 // Cache: folderName -> folderId
 let folderIdCache = {};
@@ -696,7 +737,7 @@ function updateDate() {
 
 // ─── SCREENS ────────────────────────────────────────────
 function showScreen(name) {
-  ['setup','summary','emails','compose'].forEach(s => {
+  ['setup','summary','emails','compose','table'].forEach(s => {
     document.getElementById('screen-'+s).classList.remove('active');
     document.getElementById('screen-'+s).style.display = '';
   });
@@ -998,20 +1039,83 @@ async function applyFolderRules() {
 }
 
 // ─── CATEGORIZE ──────────────────────────────────────────
+
+// Fixed rule-based categorization — always applied first
+const CATEGORY_RULES = {
+  dailyReportSenders: [
+    'canastas@jumbocapital.com.pa',
+    'mbrayton@jumbocapital.com.pa',
+    'apinzon@jumbocapital.com.pa',
+    'ychang@jumbocapital.com.pa',
+  ],
+  dailyReportSubjects: [
+    'cuadro monto inicial',
+    'cuadro monto',
+    'facturacion del dia',
+  ],
+  urgentSubjects: [
+    'urgent', 'urgente', 'asap', 'inmediato', 'critico', 'critical',
+  ],
+  actionSubjects: [
+    'action required', 'accion requerida', 'aprobacion', 'approval',
+    'firma', 'signature', 'pendiente', 'revisar', 'review needed',
+  ],
+};
+
+function applyRuleBasedCategory(email) {
+  const fromLower = (email.fromEmail || '').toLowerCase();
+  const subjectLower = (email.subject || '').toLowerCase();
+
+  // Daily Reports — by sender
+  if (CATEGORY_RULES.dailyReportSenders.includes(fromLower)) return 'Daily Reports';
+
+  // Daily Reports — by subject keyword
+  if (CATEGORY_RULES.dailyReportSubjects.some(k => subjectLower.includes(k))) return 'Daily Reports';
+
+  // Urgent — by subject keyword
+  if (CATEGORY_RULES.urgentSubjects.some(k => subjectLower.includes(k))) return 'Urgent';
+
+  // Action Required — by subject keyword
+  if (CATEGORY_RULES.actionSubjects.some(k => subjectLower.includes(k))) return 'Action Required';
+
+  return null; // no rule matched — let AI decide
+}
+
 async function categorizeEmails() {
-  const subjects = emails.map((e,i) => `${i}: ${e.subject} | From: ${e.from}`).join('\n');
-  const prompt = `Categorize each email into ONE category: "Daily Reports", "Action Required", "Urgent", or "Informational".
+  // Step 1: apply rule-based categories first
+  const needsAI = [];
+  emails.forEach((e, i) => {
+    const ruled = applyRuleBasedCategory(e);
+    if (ruled) {
+      e.category = ruled;
+    } else {
+      needsAI.push({ i, e });
+    }
+  });
+
+  // Step 2: send only uncategorized emails to Claude
+  if (!needsAI.length) return;
+
+  const subjects = needsAI.map(({i, e}) => `${i}: ${e.subject} | From: ${e.from}`).join('\n');
+  const prompt = `Categorize each email into ONE of these categories: "Action Required", "Urgent", or "Informational".
+Use "Action Required" if the email needs a response or decision.
+Use "Urgent" if it requires immediate attention.
+Use "Informational" for everything else.
+
 Emails:
 ${subjects}
-Reply ONLY with valid JSON array of strings like: ["Daily Reports","Action Required",...] with exactly ${emails.length} entries. No explanation.`;
+Reply ONLY with a valid JSON array with exactly ${needsAI.length} entries. Example: ["Informational","Action Required"]. No explanation.`;
 
   try {
     const text = (await claudeFetch(prompt, 1000)).trim();
-    const clean = text.replace(/```json|```/g,'').trim();
+    const clean = text.replace(/\`\`\`json|\`\`\`/g,'').trim();
     const cats = JSON.parse(clean);
-    cats.forEach((cat, i) => { if (emails[i]) emails[i].category = cat; });
+    cats.forEach((cat, idx) => {
+      const { i } = needsAI[idx];
+      if (emails[i]) emails[i].category = cat;
+    });
   } catch {
-    emails.forEach(e => { e.category = e.category || 'Informational'; });
+    needsAI.forEach(({i}) => { if (emails[i]) emails[i].category = 'Informational'; });
   }
 }
 
@@ -1582,6 +1686,177 @@ Reply with ONLY the summary, no preamble.`;
       textEl.appendChild(summaryDiv);
     }
   } catch {}
+}
+
+
+// ─── WEEKLY TABLE ─────────────────────────────────────────
+let weeklyEmails = [];
+let weeklyFiltered = [];
+
+async function fetchWeeklyTable() {
+  if (!accessToken || accessToken === 'DEMO') {
+    // Demo data
+    weeklyEmails = [
+      { from:'Sarah Johnson', fromEmail:'sarah@acme.com', subject:'Q3 Revenue Report - Final', date: new Date().toISOString(), category:'Daily Reports' },
+      { from:'canastas@jumbocapital.com.pa', fromEmail:'canastas@jumbocapital.com.pa', subject:'Cuadro Monto Inicial - Nov 20', date: new Date(Date.now()-86400000).toISOString(), category:'Daily Reports' },
+      { from:'mbrayton@jumbocapital.com.pa', fromEmail:'mbrayton@jumbocapital.com.pa', subject:'Facturacion del dia 19/11', date: new Date(Date.now()-86400000*2).toISOString(), category:'Daily Reports' },
+      { from:'IT Operations', fromEmail:'it@acme.com', subject:'URGENT: Server maintenance', date: new Date(Date.now()-86400000*3).toISOString(), category:'Urgent' },
+      { from:'Michael Chen', fromEmail:'mchen@supplier.com', subject:'Contract renewal needed', date: new Date(Date.now()-86400000*4).toISOString(), category:'Action Required' },
+      { from:'ychang@jumbocapital.com.pa', fromEmail:'ychang@jumbocapital.com.pa', subject:'Reporte bodega diario', date: new Date(Date.now()-86400000*5).toISOString(), category:'Daily Reports' },
+    ];
+    weeklyFiltered = [...weeklyEmails];
+    renderTable();
+    return;
+  }
+
+  const btn = document.getElementById('btn-fetch-table');
+  btn.textContent = '⟳ Cargando...';
+  btn.disabled = true;
+
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  let url = 'https://graph.microsoft.com/v1.0/me/messages' +
+    `?$filter=receivedDateTime ge ${since}` +
+    '&$top=100' +
+    '&$orderby=receivedDateTime desc' +
+    '&$select=id,subject,from,receivedDateTime,isRead';
+
+  let all = [];
+  try {
+    while (url) {
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + accessToken } });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const mapped = (data.value || []).map(m => ({
+        id: m.id,
+        from: m.from?.emailAddress?.name || m.from?.emailAddress?.address || 'Unknown',
+        fromEmail: (m.from?.emailAddress?.address || '').toLowerCase(),
+        subject: m.subject || '(Sin asunto)',
+        date: m.receivedDateTime,
+        category: null,
+      }));
+      all = all.concat(mapped);
+      url = (data['@odata.nextLink'] && all.length < 1000) ? data['@odata.nextLink'] : null;
+    }
+
+    // Apply rule-based categories
+    all.forEach(e => { e.category = applyRuleBasedCategory(e) || 'Informational'; });
+    weeklyEmails = all;
+    weeklyFiltered = [...weeklyEmails];
+    renderTable();
+    toast(`${all.length} correos de la última semana cargados ✓`);
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  }
+  btn.textContent = '⟳ Cargar';
+  btn.disabled = false;
+}
+
+function filterTable(q) {
+  const lower = q.toLowerCase();
+  weeklyFiltered = weeklyEmails.filter(e =>
+    e.from.toLowerCase().includes(lower) ||
+    e.fromEmail.includes(lower) ||
+    e.subject.toLowerCase().includes(lower)
+  );
+  renderTable();
+}
+
+function renderTable() {
+  const container = document.getElementById('table-container');
+  const statsEl = document.getElementById('table-stats');
+
+  if (!weeklyFiltered.length) {
+    container.innerHTML = '<div class="empty-state"><div class="icon">🔍</div><h3>Sin resultados</h3><p>Intenta otra búsqueda</p></div>';
+    statsEl.innerHTML = '';
+    return;
+  }
+
+  // Stats bar
+  const cats = { 'Daily Reports':0, 'Action Required':0, 'Urgent':0, 'Informational':0 };
+  weeklyFiltered.forEach(e => { if (cats[e.category] !== undefined) cats[e.category]++; });
+  const catColors = { 'Daily Reports':'var(--accent)', 'Action Required':'var(--amber)', 'Urgent':'var(--red)', 'Informational':'var(--teal)' };
+  statsEl.innerHTML = Object.entries(cats).map(([cat, count]) =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px">
+      <span style="color:${catColors[cat]};font-weight:500">${count}</span>
+      <span style="color:var(--text3);margin-left:4px">${cat}</span>
+    </div>`).join('') +
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px">
+      <span style="color:var(--text);font-weight:500">${weeklyFiltered.length}</span>
+      <span style="color:var(--text3);margin-left:4px">Total</span>
+    </div>`;
+
+  // Table
+  const catOptions = ['Daily Reports','Action Required','Urgent','Informational'];
+  container.innerHTML = `<div class="table-wrap">
+    <table class="week-table">
+      <thead>
+        <tr>
+          <th>Remitente</th>
+          <th>Subject</th>
+          <th>Fecha</th>
+          <th>Categoría</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${weeklyFiltered.map((e, i) => `
+        <tr>
+          <td class="td-from">
+            <div>${esc(e.from)}</div>
+            <div style="font-size:11px;color:var(--text3);font-weight:400">${esc(e.fromEmail)}</div>
+          </td>
+          <td class="td-subject">${esc(e.subject)}</td>
+          <td class="td-date">${formatDateFull(e.date)}</td>
+          <td class="td-cat">
+            <select onchange="changeWeeklyCategory(${i}, this.value)">
+              ${catOptions.map(c => `<option value="${c}" ${e.category===c?'selected':''}>${c}</option>`).join('')}
+            </select>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function changeWeeklyCategory(idx, newCat) {
+  weeklyFiltered[idx].category = newCat;
+  // Update in weeklyEmails too
+  const orig = weeklyEmails.find(e => e.fromEmail === weeklyFiltered[idx].fromEmail && e.subject === weeklyFiltered[idx].subject);
+  if (orig) orig.category = newCat;
+  // Re-render stats only
+  const cats = { 'Daily Reports':0, 'Action Required':0, 'Urgent':0, 'Informational':0 };
+  weeklyFiltered.forEach(e => { if (cats[e.category] !== undefined) cats[e.category]++; });
+  const catColors = { 'Daily Reports':'var(--accent)', 'Action Required':'var(--amber)', 'Urgent':'var(--red)', 'Informational':'var(--teal)' };
+  const statsEl = document.getElementById('table-stats');
+  if (statsEl) statsEl.innerHTML = Object.entries(cats).map(([cat, count]) =>
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px">
+      <span style="color:${catColors[cat]};font-weight:500">${count}</span>
+      <span style="color:var(--text3);margin-left:4px">${cat}</span>
+    </div>`).join('') +
+    `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px">
+      <span style="color:var(--text);font-weight:500">${weeklyFiltered.length}</span>
+      <span style="color:var(--text3);margin-left:4px">Total</span>
+    </div>`;
+}
+
+function exportToCSV() {
+  if (!weeklyEmails.length) { toast('Carga los correos primero.'); return; }
+  const rows = [['Remitente', 'Email', 'Subject', 'Fecha', 'Categoria']];
+  weeklyEmails.forEach(e => {
+    rows.push([
+      e.from.replace(/,/g,' '),
+      e.fromEmail,
+      e.subject.replace(/,/g,' '),
+      formatDateFull(e.date),
+      e.category
+    ]);
+  });
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'correos_semana.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Exportado como correos_semana.csv ✓');
 }
 
 // ─── HELPERS ─────────────────────────────────────────────
