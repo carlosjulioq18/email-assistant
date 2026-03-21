@@ -1200,14 +1200,14 @@ async function categorizeEmails() {
   if (!needsAI.length) return;
 
   const subjects = needsAI.map(({i, e}) => `${i}: ${e.subject} | From: ${e.from}`).join('\n');
-  const prompt = `Categorize each email into ONE of these categories: "Action Required", "Urgent", or "Informational".
-Use "Action Required" if the email needs a response or decision.
-Use "Urgent" if it requires immediate attention.
-Use "Informational" for everything else.
+  const prompt = `Categoriza cada correo en UNA de estas categorías: "Action Required", "Urgent", o "Informational".
+Usa "Action Required" si el correo requiere una respuesta o decisión.
+Usa "Urgent" si requiere atención inmediata.
+Usa "Informational" para todo lo demás.
 
-Emails:
+Correos:
 ${subjects}
-Reply ONLY with a valid JSON array with exactly ${needsAI.length} entries. Example: ["Informational","Action Required"]. No explanation.`;
+Responde SOLO con un JSON array válido con exactamente ${needsAI.length} entradas. Ejemplo: ["Informational","Action Required"]. Sin explicación.`;
 
   try {
     const text = (await claudeFetch(prompt, 1000)).trim();
@@ -1258,19 +1258,19 @@ async function generateSummary() {
     `[${e.category}] FROM: ${e.from} | SUBJECT: ${e.subject} | PREVIEW: ${e.preview.slice(0,120)}`
   ).join('\n');
 
-  const prompt = `You are a professional executive assistant. Write a concise daily email briefing for your executive.
+  const prompt = `Eres un asistente ejecutivo profesional. Escribe un resumen diario de correos para tu ejecutivo. Responde SIEMPRE en español.
 
-Today's emails (${emails.length} total):
+Correos de hoy (${emails.length} en total):
 ${emailList}
 
-Write a structured daily briefing with these sections:
-1. **Executive Overview** (2-3 sentences summarizing the day)
-2. **Urgent Items** (anything needing immediate attention)
-3. **Daily Reports Received** (list key reports with one-line summary each)
-4. **Action Items** (things requiring a response or decision)
-5. **FYI / Informational** (brief summary of general updates)
+Escribe un resumen estructurado con estas secciones:
+1. **Resumen Ejecutivo** (2-3 oraciones resumiendo el día)
+2. **Urgente** (lo que necesita atención inmediata)
+3. **Reportes Diarios Recibidos** (lista los reportes clave con un resumen de una línea cada uno)
+4. **Acciones Requeridas** (cosas que requieren respuesta o decisión)
+5. **Informativo** (resumen breve de actualizaciones generales)
 
-Be concise but informative. Use a professional executive assistant tone.`;
+Sé conciso pero informativo. Usa un tono profesional de asistente ejecutivo. Todo en español.`;
 
   try {
     let text = await claudeFetch(prompt, 1000);
@@ -1434,16 +1434,16 @@ async function aiReply(id) {
   box.classList.add('open');
   textEl.innerHTML = '<span class="loading">✦ Polishing your reply...</span>';
 
-  const prompt = `You are a professional email assistant. Transform this casual draft into a polished, professional reply.
+  const prompt = `Eres un asistente de correo profesional. Transforma este borrador casual en una respuesta pulida y profesional. Responde SIEMPRE en español.
 
-ORIGINAL EMAIL:
-From: ${email.from}
-Subject: ${email.subject}
-Body: ${email.body?.slice(0,600)||email.preview}
+CORREO ORIGINAL:
+De: ${email.from}
+Asunto: ${email.subject}
+Cuerpo: ${email.body?.slice(0,600)||email.preview}
 
-MY DRAFT REPLY: "${draft}"
+MI BORRADOR DE RESPUESTA: "${draft}"
 
-Write ONLY the professional email reply body (no subject line, no "here is your reply" preamble). Keep it concise, clear, and professional. Match the appropriate formality level.`;
+Escribe SOLO el cuerpo de la respuesta profesional (sin línea de asunto, sin preámbulo). Sé conciso, claro y profesional. Usa el nivel de formalidad apropiado. Todo en español.`;
 
   try {
     textEl.textContent = await claudeFetch(prompt, 1000);
@@ -1459,13 +1459,13 @@ async function autoReply(id) {
   box.classList.add('open');
   textEl.innerHTML = '<span class="loading">✦ Drafting reply...</span>';
 
-  const prompt = `You are a professional executive assistant. Write a brief, professional reply to this email.
+  const prompt = `Eres un asistente ejecutivo profesional. Escribe una respuesta breve y profesional a este correo. Responde SIEMPRE en español.
 
-From: ${email.from}
-Subject: ${email.subject}
-Body: ${email.body?.slice(0,600)||email.preview}
+De: ${email.from}
+Asunto: ${email.subject}
+Cuerpo: ${email.body?.slice(0,600)||email.preview}
 
-Write ONLY the email body. Be professional, warm, and concise. Acknowledge receipt and provide an appropriate response based on the email context.`;
+Escribe SOLO el cuerpo del correo. Sé profesional, cordial y conciso. Acusa recibo y proporciona una respuesta apropiada según el contexto del correo. Todo en español.`;
 
   try {
     textEl.textContent = await claudeFetch(prompt, 1000);
@@ -1525,10 +1525,10 @@ async function previewPolish() {
   if (!body) { toast('Write something first.'); return; }
   document.getElementById('compose-status').textContent = 'Polishing...';
 
-  const prompt = `Transform this casual email draft into a professional, polished email body.
-Subject: ${document.getElementById('compose-subject').value}
-Draft: "${body}"
-Reply ONLY with the polished email body text. No preamble.`;
+  const prompt = `Transforma este borrador casual en un cuerpo de correo profesional y pulido. Responde SIEMPRE en español.
+Asunto: ${document.getElementById('compose-subject').value}
+Borrador: "${body}"
+Responde SOLO con el texto del cuerpo del correo pulido. Sin preámbulo. Todo en español.`;
 
   try {
     polishedDraft = await claudeFetch(prompt, 1000);
@@ -1765,8 +1765,8 @@ async function readAttachmentContent(emailId, attachId, name) {
   }
 }
 
-async function summarizeAttachmentForEmail(emailId, attachId, name, content) {
-  if (!content || content.length < 50) return;
+async function summarizeAttachmentForEmail(emailId, attachId, name, attachContent) {
+  if (!attachContent || attachContent.length < 50) return;
   const email = emails.find(e=>e.id===emailId);
   if (!email) return;
 
@@ -1774,10 +1774,10 @@ async function summarizeAttachmentForEmail(emailId, attachId, name, content) {
   if (!email.attachmentSummaries) email.attachmentSummaries = {};
   if (email.attachmentSummaries[attachId]) return; // already summarized
 
-  const prompt = `Summarize this attachment in 2-3 sentences for an executive. Be specific with numbers/dates.
-Filename: ${name}
-Content: ${content.slice(0, 1500)}
-Reply with ONLY the summary, no preamble.`;
+  const prompt = `Resume este adjunto en 2-3 oraciones para un ejecutivo. Sé específico con números y fechas. Responde en español.
+Archivo: ${name}
+Contenido: ${attachContent.slice(0, 1500)}
+Responde SOLO con el resumen, sin preámbulo. En español.`;
 
   try {
     const summary = await claudeFetch(prompt, 200);
